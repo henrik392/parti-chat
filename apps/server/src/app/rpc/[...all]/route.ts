@@ -1,17 +1,17 @@
-import { createContext } from "@/lib/context";
-import { appRouter } from "@/routers";
-import { RPCHandler } from "@orpc/server/fetch";
-import { NextRequest } from "next/server";
+import { RPCHandler } from '@orpc/server/fetch';
+import type { NextRequest } from 'next/server';
+import { createContext } from '@/lib/context';
+import { appRouter } from '@/routers';
 
 const handler = new RPCHandler(appRouter);
 
 async function handleRequest(req: NextRequest) {
-	const { response } = await handler.handle(req, {
-		prefix: "/rpc",
-		context: await createContext(req),
-	});
+  const { response } = await handler.handle(req, {
+    prefix: '/rpc',
+    context: await createContext(req),
+  });
 
-	return response ?? new Response("Not found", { status: 404 });
+  return response ?? new Response('Not found', { status: 404 });
 }
 
 export const GET = handleRequest;
