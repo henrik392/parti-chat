@@ -1,0 +1,40 @@
+{
+	"name": "server",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev --turbopack",
+		"build": "next build",
+		"start": "next start",
+		"db:push": "drizzle-kit push",
+		"db:studio": "drizzle-kit studio",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:start": "docker compose up -d",
+		"db:watch": "docker compose up",
+		"db:stop": "docker compose stop",
+		"db:down": "docker compose down"
+	},
+	"dependencies": {
+		"next": "15.5.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"dotenv": "^17.2.1",
+		"@orpc/server": "^1.8.4",
+		"@orpc/client": "^1.8.4",
+		"drizzle-orm": "^0.44.2",
+		"pg": "^8.14.1",
+		"ai": "^5.0.9",
+		"@ai-sdk/google": "^2.0.3",
+		"better-auth": "^1.3.7"
+	},
+	"devDependencies": {
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"zod": "^4.0.13",
+		"typescript": "^5",
+		"@types/bun": "^1.2.6",
+		"drizzle-kit": "^0.31.2",
+		"@types/pg": "^8.11.11"
+	}
+}

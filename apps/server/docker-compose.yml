@@ -1,0 +1,23 @@
+name: parti-chat
+
+services:
+  postgres:
+    image: postgres
+    container_name: parti-chat-postgres
+    environment:
+      POSTGRES_DB: parti-chat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - parti-chat_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  parti-chat_postgres_data:
