@@ -18,7 +18,8 @@
       "!**/.wrangler",
       "!**/.alchemy",
       "!**/wrangler.jsonc",
-      "!**/.source"
+      "!**/.source",
+      "!**/index.css"
     ]
   },
   "extends": ["ultracite"]

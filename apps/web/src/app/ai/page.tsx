@@ -19,12 +19,14 @@ export default function AIPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const text = input.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     sendMessage({ text });
     setInput('');
   };
@@ -52,7 +54,10 @@ export default function AIPage() {
               {message.parts?.map((part, index) => {
                 if (part.type === 'text') {
                   return (
-                    <div className="whitespace-pre-wrap" key={index}>
+                    <div
+                      className="whitespace-pre-wrap"
+                      key={`${message.id}-part-${index}`}
+                    >
                       {part.text}
                     </div>
                   );
