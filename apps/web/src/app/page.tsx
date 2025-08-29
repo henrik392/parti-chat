@@ -14,6 +14,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputToolbar,
+  PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
 import {
   Reasoning,
@@ -28,16 +29,18 @@ import {
   SourcesTrigger,
 } from '@/components/ai-elements/sources';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
+import { PartySelector } from '@/components/party-selector';
 
 const suggestions = [
-  'Explain how machine learning works',
-  'Write a Python function to sort a list',
-  'What are the latest trends in web development?',
-  'Help me plan a healthy meal for today',
+  'Hva er partiets syn på klimapolitikk?',
+  'Hvordan skal Norge håndtere innvandring?',
+  'Hvilken økonomisk politikk fører partiet?',
+  'Hva mener partiet om skattepolitikk?',
 ];
 
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
+  const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
   const { messages, sendMessage, status } = useChat({
     transport: {
       async sendMessages(options) {
@@ -80,11 +83,11 @@ const ChatBotDemo = () => {
               <div className="flex h-full flex-col items-center justify-center gap-6">
                 <div className="text-center">
                   <h2 className="mb-2 font-semibold text-2xl">
-                    Welcome to AI Chat
+                    Multi-Party Political Q&A Chat
                   </h2>
                   <p className="mb-6 text-muted-foreground">
-                    Get started by choosing a suggestion or typing your own
-                    message
+                    Velg partier og still spørsmål for å sammenligne politiske
+                    standpunkter
                   </p>
                 </div>
                 <Suggestions className="max-w-2xl">
@@ -156,15 +159,38 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
 
-        <PromptInput className="mt-4" onSubmit={handleSubmit}>
-          <PromptInputTextarea
-            onChange={(e) => setInput(e.target.value)}
-            value={input}
+        <div className="mt-4 space-y-3">
+          <PartySelector
+            className="px-1"
+            onSelectionChange={setSelectedPartyIds}
+            selectedPartyIds={selectedPartyIds}
           />
-          <PromptInputToolbar>
-            <PromptInputSubmit disabled={!input} status={status} />
-          </PromptInputToolbar>
-        </PromptInput>
+
+          <PromptInput onSubmit={handleSubmit}>
+            <PromptInputTextarea
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                selectedPartyIds.length === 0
+                  ? 'Velg partier først, så still ditt spørsmål...'
+                  : 'Still ditt spørsmål...'
+              }
+              value={input}
+            />
+            <PromptInputToolbar>
+              <PromptInputTools>
+                {selectedPartyIds.length === 0 && (
+                  <span className="text-muted-foreground text-sm">
+                    Velg minst ett parti for å fortsette
+                  </span>
+                )}
+              </PromptInputTools>
+              <PromptInputSubmit
+                disabled={!input || selectedPartyIds.length === 0}
+                status={status}
+              />
+            </PromptInputToolbar>
+          </PromptInput>
+        </div>
       </div>
     </div>
   );
