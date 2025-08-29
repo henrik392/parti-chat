@@ -23,9 +23,17 @@
     "db:stop": "turbo -F server db:stop",
     "db:down": "turbo -F server db:down"
   },
-  "dependencies": {},
+  "dependencies": {
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
+    "pino": "^9.9.0",
+    "tesseract.js": "^6.0.1",
+    "uuid": "^11.1.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/uuid": "^10.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
     "turbo": "^2.5.6",

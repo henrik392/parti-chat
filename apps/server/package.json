@@ -10,6 +10,10 @@
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:setup": "bun run src/lib/setup-database.ts",
+    "test:ingestion": "bun run src/lib/test-ingestion.ts",
+    "test:simple": "bun run src/lib/test-simple.ts",
+    "test:minimal": "bun run src/lib/test-minimal.ts",
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
@@ -17,6 +21,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.11",
+    "@ai-sdk/openai": "^2.0.23",
     "@openrouter/ai-sdk-provider": "^1.1.2",
     "@orpc/client": "^1.8.5",
     "@orpc/server": "^1.8.5",
