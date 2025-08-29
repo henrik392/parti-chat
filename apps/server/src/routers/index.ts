@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { findRelevantContentByParties } from '../lib/embedding-generator';
 import { protectedProcedure, publicProcedure } from '../lib/orpc';
 import { generateComparisonSummary } from '../lib/rag-service';
+import { generateSystemPrompt } from '../lib/system-prompt';
 
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
@@ -142,22 +143,11 @@ export const appRouter = {
     }
 
     // Create system message with party-specific context
-    const systemMessage = `Du er en ekspert på norsk politikk som svarer på vegne av ${party.name} (${party.shortName}).
-
-Basér ditt svar UTELUKKENDE på følgende informasjon fra partiets offisielle program:
-
-${ragContext}
-
-Regler for svaret:
-1. Svar på norsk bokmål
-2. Hold svaret til 3-6 setninger
-3. Kun bruk informasjon fra konteksten over
-4. Hvis spørsmålet ikke dekkes av konteksten, svar: "Ikke omtalt i partiprogrammet (${new Date().getFullYear()})."
-5. Ikke spekuler eller legg til egen tolkning
-6. Vær nøytral og faktaorientert
-
-Kilder som kan refereres til:
-${ragCitations}`;
+    const systemMessage = generateSystemPrompt(
+      party.name,
+      ragContext,
+      ragCitations
+    );
 
     const result = streamText({
       model: openrouter('openai/gpt-5-mini'),
@@ -166,6 +156,11 @@ ${ragCitations}`;
         { role: 'user', content: userQuestion },
       ],
       temperature: 0.1, // Low temperature for factual responses
+      providerOptions: {
+        openai: {
+          reasoning_effort: 'low',
+        },
+      },
     });
 
     return streamToEventIterator(result.toUIMessageStream());
