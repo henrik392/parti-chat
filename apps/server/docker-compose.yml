@@ -2,7 +2,7 @@ name: parti-chat
 
 services:
   postgres:
-    image: postgres
+    image: pgvector/pgvector:pg16
     container_name: parti-chat-postgres
     environment:
       POSTGRES_DB: parti-chat
