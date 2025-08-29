@@ -7,8 +7,6 @@ import { protectedProcedure, publicProcedure } from '../lib/orpc';
 
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
-  model: z.string().optional().default('openai/gpt-5-mini'),
-  webSearch: z.boolean().optional().default(false),
 });
 
 const openrouter = createOpenRouter({
@@ -27,7 +25,7 @@ export const appRouter = {
   }),
   chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
     const result = streamText({
-      model: openrouter(input.model),
+      model: openrouter('openai/gpt-5-mini'),
       messages: convertToModelMessages(input.messages),
       system: 'You are a helpful assistant.',
     });

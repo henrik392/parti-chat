@@ -1,7 +1,6 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { GlobeIcon } from 'lucide-react';
 import { useState } from 'react';
 import {
   Conversation,
@@ -12,16 +11,9 @@ import { Loader } from '@/components/ai-elements/loader';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import {
   PromptInput,
-  PromptInputButton,
-  PromptInputModelSelect,
-  PromptInputModelSelectContent,
-  PromptInputModelSelectItem,
-  PromptInputModelSelectTrigger,
-  PromptInputModelSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputToolbar,
-  PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
 import {
   Reasoning,
@@ -36,40 +28,18 @@ import {
   SourcesTrigger,
 } from '@/components/ai-elements/sources';
 
-const models = [
-  {
-    name: 'GPT-5 mini',
-    value: 'openai/gpt-5-mini',
-  },
-  {
-    name: 'DeepSeek R1',
-    value: 'deepseek/deepseek-r1',
-  },
-  {
-    name: 'Claude 3.5 Sonnet',
-    value: 'anthropic/claude-3.5-sonnet',
-  },
-  {
-    name: 'Llama 3.3 70B',
-    value: 'meta-llama/llama-3.3-70b-instruct',
-  },
-];
-
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
-  const [model, setModel] = useState<string>(models[0].value);
-  const [webSearch, setWebSearch] = useState(false);
   const { messages, sendMessage, status } = useChat({
     transport: {
       async sendMessages(options) {
-        const { client, eventIteratorToStream } = await import('@/utils/orpc');
+        const { client } = await import('@/utils/orpc');
+        const { eventIteratorToStream } = await import('@orpc/client');
 
         return eventIteratorToStream(
           await client.chat(
             {
               messages: options.messages,
-              model,
-              webSearch,
             },
             { signal: options.abortSignal }
           )
@@ -158,35 +128,6 @@ const ChatBotDemo = () => {
             value={input}
           />
           <PromptInputToolbar>
-            <PromptInputTools>
-              <PromptInputButton
-                onClick={() => setWebSearch(!webSearch)}
-                variant={webSearch ? 'default' : 'ghost'}
-              >
-                <GlobeIcon size={16} />
-                <span>Search</span>
-              </PromptInputButton>
-              <PromptInputModelSelect
-                onValueChange={(value) => {
-                  setModel(value);
-                }}
-                value={model}
-              >
-                <PromptInputModelSelectTrigger>
-                  <PromptInputModelSelectValue />
-                </PromptInputModelSelectTrigger>
-                <PromptInputModelSelectContent>
-                  {models.map((modelOption) => (
-                    <PromptInputModelSelectItem
-                      key={modelOption.value}
-                      value={modelOption.value}
-                    >
-                      {modelOption.name}
-                    </PromptInputModelSelectItem>
-                  ))}
-                </PromptInputModelSelectContent>
-              </PromptInputModelSelect>
-            </PromptInputTools>
             <PromptInputSubmit disabled={!input} status={status} />
           </PromptInputToolbar>
         </PromptInput>
