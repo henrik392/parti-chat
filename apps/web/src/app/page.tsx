@@ -16,7 +16,7 @@ import {
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { PartyCard } from '@/components/party-card';
 import { PartySelector } from '@/components/party-selector';
-import { useMultiPartyChat } from '@/hooks/useMultiPartyChat';
+import { useMultiPartyChat } from '@/hooks/use-multi-party-chat';
 
 type Party = {
   id: string;

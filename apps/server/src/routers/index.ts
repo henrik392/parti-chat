@@ -5,10 +5,7 @@ import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
 import { findRelevantContentByParties } from '../lib/embedding-generator';
 import { protectedProcedure, publicProcedure } from '../lib/orpc';
-import {
-  generateComparisonSummary,
-  generatePartyAnswers,
-} from '../lib/rag-service';
+import { generateComparisonSummary } from '../lib/rag-service';
 
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
@@ -20,13 +17,6 @@ const chatInputSchema = z.object({
     .string()
     .optional()
     .describe('Specific party ID for party-based responses'),
-});
-
-const questionInputSchema = z.object({
-  question: z.string().min(1, 'Question is required'),
-  selectedPartyIds: z
-    .array(z.string())
-    .min(1, 'At least one party must be selected'),
 });
 
 const comparisonInputSchema = z.object({
@@ -75,25 +65,6 @@ export const appRouter = {
   getParties: publicProcedure.handler(() => {
     return PARTIES;
   }),
-
-  // Ask question to selected parties
-  askParties: publicProcedure
-    .input(questionInputSchema)
-    .handler(async ({ input }) => {
-      const { question, selectedPartyIds } = input;
-
-      // Validate party IDs
-      const validPartyIds = selectedPartyIds.filter((id) =>
-        PARTIES.some((party) => party.id === id)
-      );
-
-      if (validPartyIds.length === 0) {
-        throw new Error('No valid parties selected');
-      }
-
-      const answers = await generatePartyAnswers(question, validPartyIds);
-      return answers;
-    }),
 
   // Generate comparison summary
   compareParties: publicProcedure
