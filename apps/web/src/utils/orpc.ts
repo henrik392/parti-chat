@@ -21,7 +21,7 @@ export const queryClient = new QueryClient({
 });
 
 export const link = new RPCLink({
-  url: `${process.env.NEXT_PUBLIC_SERVER_URL}/rpc`,
+  url: `${process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3001'}/rpc`,
   fetch(url, options) {
     return fetch(url, {
       ...options,
@@ -33,3 +33,5 @@ export const link = new RPCLink({
 export const client: AppRouterClient = createORPCClient(link);
 
 export const orpc = createTanstackQueryUtils(client);
+
+export { eventIteratorToStream } from '@orpc/client';

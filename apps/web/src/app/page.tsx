@@ -38,12 +38,20 @@ import {
 
 const models = [
   {
-    name: 'GPT 4o',
-    value: 'openai/gpt-4o',
+    name: 'GPT-5 mini',
+    value: 'openai/gpt-5-mini',
   },
   {
-    name: 'Deepseek R1',
+    name: 'DeepSeek R1',
     value: 'deepseek/deepseek-r1',
+  },
+  {
+    name: 'Claude 3.5 Sonnet',
+    value: 'anthropic/claude-3.5-sonnet',
+  },
+  {
+    name: 'Llama 3.3 70B',
+    value: 'meta-llama/llama-3.3-70b-instruct',
   },
 ];
 
@@ -51,20 +59,32 @@ const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [webSearch, setWebSearch] = useState(false);
-  const { messages, sendMessage, status } = useChat();
+  const { messages, sendMessage, status } = useChat({
+    transport: {
+      async sendMessages(options) {
+        const { client, eventIteratorToStream } = await import('@/utils/orpc');
+
+        return eventIteratorToStream(
+          await client.chat(
+            {
+              messages: options.messages,
+              model,
+              webSearch,
+            },
+            { signal: options.abortSignal }
+          )
+        );
+      },
+      reconnectToStream() {
+        throw new Error('Reconnection not supported');
+      },
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
-      sendMessage(
-        { text: input },
-        {
-          body: {
-            model,
-            webSearch,
-          },
-        }
-      );
+      sendMessage({ text: input });
       setInput('');
     }
   };
@@ -156,12 +176,12 @@ const ChatBotDemo = () => {
                   <PromptInputModelSelectValue />
                 </PromptInputModelSelectTrigger>
                 <PromptInputModelSelectContent>
-                  {models.map((model) => (
+                  {models.map((modelOption) => (
                     <PromptInputModelSelectItem
-                      key={model.value}
-                      value={model.value}
+                      key={modelOption.value}
+                      value={modelOption.value}
                     >
-                      {model.name}
+                      {modelOption.name}
                     </PromptInputModelSelectItem>
                   ))}
                 </PromptInputModelSelectContent>

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.11",
+    "@openrouter/ai-sdk-provider": "^1.1.2",
     "@orpc/client": "^1.8.5",
     "@orpc/server": "^1.8.5",
     "ai": "^5.0.27",
