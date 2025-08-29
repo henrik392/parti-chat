@@ -27,6 +27,14 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from '@/components/ai-elements/sources';
+import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
+
+const suggestions = [
+  'Explain how machine learning works',
+  'Write a Python function to sort a list',
+  'What are the latest trends in web development?',
+  'Help me plan a healthy meal for today',
+];
 
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
@@ -59,11 +67,37 @@ const ChatBotDemo = () => {
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    sendMessage({ text: suggestion });
+  };
+
   return (
     <div className="relative mx-auto size-full h-screen max-w-4xl p-6">
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
+            {messages.length === 0 && (
+              <div className="flex h-full flex-col items-center justify-center gap-6">
+                <div className="text-center">
+                  <h2 className="mb-2 font-semibold text-2xl">
+                    Welcome to AI Chat
+                  </h2>
+                  <p className="mb-6 text-muted-foreground">
+                    Get started by choosing a suggestion or typing your own
+                    message
+                  </p>
+                </div>
+                <Suggestions className="max-w-2xl">
+                  {suggestions.map((suggestion) => (
+                    <Suggestion
+                      key={suggestion}
+                      onClick={handleSuggestionClick}
+                      suggestion={suggestion}
+                    />
+                  ))}
+                </Suggestions>
+              </div>
+            )}
             {messages.map((message) => (
               <div key={message.id}>
                 {message.role === 'assistant' && (
