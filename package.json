@@ -24,10 +24,7 @@
     "db:down": "turbo -F server db:down"
   },
   "dependencies": {
-    "pdf-lib": "^1.17.1",
-    "pdf-parse": "^1.1.1",
     "pino": "^9.9.0",
-    "tesseract.js": "^6.0.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

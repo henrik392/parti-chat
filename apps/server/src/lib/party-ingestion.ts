@@ -1,6 +1,6 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import { eq } from 'drizzle-orm';
-import fs from 'fs/promises';
-import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db';
 import { embeddings, parties, partyPrograms } from '../db/schema';
@@ -20,23 +20,23 @@ const PARTY_DATA = [
   { shortName: 'v', name: 'Venstre', color: '#00a651' },
 ];
 
-export interface IngestionProgress {
+export type IngestionProgress = {
   partyShortName: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number; // 0-100
   message: string;
   error?: string;
-}
+};
 
-export interface IngestionResult {
+export type IngestionResult = {
   success: boolean;
   totalProcessed: number;
   failed: Array<{ party: string; error: string }>;
   progress: IngestionProgress[];
-}
+};
 
 /**
- * Main function to ingest all party programs from the party-programs directory
+ * Main function to ingest all party programs from the party-program directory
  */
 export async function ingestAllPartyPrograms(
   programsDirectory = '/Users/henrikkvamme/development/fun/parti-chat/party-program',
@@ -50,8 +50,6 @@ export async function ingestAllPartyPrograms(
   };
 
   try {
-    console.log('Starting party program ingestion...');
-
     // Initialize parties in database
     await initializeParties();
 
@@ -60,8 +58,6 @@ export async function ingestAllPartyPrograms(
     const pdfFiles = files.filter((file) =>
       file.toLowerCase().endsWith('.pdf')
     );
-
-    console.log(`Found ${pdfFiles.length} PDF files to process`);
 
     // Initialize progress tracking
     result.progress = pdfFiles.map((file) => ({
@@ -94,7 +90,6 @@ export async function ingestAllPartyPrograms(
         result.progress[i].message = 'Successfully processed';
         result.totalProcessed++;
       } catch (error) {
-        console.error(`Failed to process ${file}:`, error);
         result.success = false;
         result.failed.push({
           party: partyShortName,
@@ -109,13 +104,8 @@ export async function ingestAllPartyPrograms(
 
       progressCallback?.(result.progress);
     }
-
-    console.log(
-      `Ingestion completed. Processed: ${result.totalProcessed}, Failed: ${result.failed.length}`
-    );
     return result;
   } catch (error) {
-    console.error('Critical error during ingestion:', error);
     result.success = false;
     throw error;
   }
@@ -148,15 +138,12 @@ async function ingestSinglePartyProgram(
   });
 
   if (existingProgram && existingProgram.isProcessed === 'completed') {
-    console.log(`Program for ${partyShortName} already processed, skipping...`);
     return;
   }
 
   progressCallback?.(30);
 
   try {
-    // Process the PDF
-    console.log(`Processing PDF for ${partyShortName}...`);
     const processedPDF = await processPDF(filePath);
 
     progressCallback?.(50);
@@ -189,15 +176,9 @@ async function ingestSinglePartyProgram(
     }
 
     progressCallback?.(60);
-
-    // Generate chunks
-    console.log(`Chunking content for ${partyShortName}...`);
-    const chunks = chunkPDFContent(processedPDF);
+    const chunks = await chunkPDFContent(processedPDF);
 
     progressCallback?.(70);
-
-    // Generate embeddings for all chunks
-    console.log(`Generating embeddings for ${chunks.length} chunks...`);
     const embeddings_data = await generateEmbeddings(
       chunks.map((c) => c.content)
     );
@@ -231,10 +212,6 @@ async function ingestSinglePartyProgram(
       .where(eq(partyPrograms.id, programId));
 
     progressCallback?.(100);
-
-    console.log(
-      `Successfully processed ${partyShortName}: ${chunks.length} chunks, ${embeddings_data.length} embeddings`
-    );
   } catch (error) {
     // Mark as failed
     if (existingProgram?.id) {
@@ -257,8 +234,6 @@ async function ingestSinglePartyProgram(
  * Initialize parties in the database
  */
 async function initializeParties(): Promise<void> {
-  console.log('Initializing parties in database...');
-
   for (const partyData of PARTY_DATA) {
     const existing = await db.query.parties.findFirst({
       where: eq(parties.shortName, partyData.shortName.toUpperCase()),
@@ -271,8 +246,6 @@ async function initializeParties(): Promise<void> {
         shortName: partyData.shortName.toUpperCase(),
         color: partyData.color,
       });
-
-      console.log(`Initialized party: ${partyData.name}`);
     }
   }
 }
@@ -281,11 +254,21 @@ async function initializeParties(): Promise<void> {
  * Get human-readable progress message
  */
 function getProgressMessage(progress: number): string {
-  if (progress < 20) return 'Preparing...';
-  if (progress < 40) return 'Processing PDF...';
-  if (progress < 70) return 'Chunking content...';
-  if (progress < 90) return 'Generating embeddings...';
-  if (progress < 100) return 'Saving to database...';
+  if (progress < 20) {
+    return 'Preparing...';
+  }
+  if (progress < 40) {
+    return 'Processing PDF...';
+  }
+  if (progress < 70) {
+    return 'Chunking content...';
+  }
+  if (progress < 90) {
+    return 'Generating embeddings...';
+  }
+  if (progress < 100) {
+    return 'Saving to database...';
+  }
   return 'Completed';
 }
 

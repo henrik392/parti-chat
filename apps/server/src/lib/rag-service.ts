@@ -1,34 +1,33 @@
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { parties } from '../db/schema';
 import {
-  findRelevantContentAllParties,
   findRelevantContentByParties,
   type RetrievalResult,
 } from './embedding-generator';
 
-export interface PartyInfo {
+export type PartyInfo = {
   id: string;
   name: string;
   shortName: string;
   color: string;
-}
+};
 
-export interface PartyAnswer {
+export type PartyAnswer = {
   party: PartyInfo;
   answer: string;
   citations: Citation[];
   hasContent: boolean;
-}
+};
 
-export interface Citation {
+export type Citation = {
   content: string;
   chapterTitle?: string;
   pageNumber?: number;
   similarity: number;
-}
+};
 
-export interface ComparisonSummary {
+export type ComparisonSummary = {
   similarities: string[];
   differences: string[];
   citations: Array<{
@@ -36,7 +35,7 @@ export interface ComparisonSummary {
     supportingParties: PartyInfo[];
     citation: Citation;
   }>;
-}
+};
 
 /**
  * Generate answers for selected parties based on a user query
@@ -47,10 +46,6 @@ export async function generatePartyAnswers(
   minSimilarity = 0.6
 ): Promise<PartyAnswer[]> {
   try {
-    console.log(
-      `Generating answers for ${selectedPartyIds.length} parties for query: "${query}"`
-    );
-
     // Get party information
     const partyInfos = await db
       .select()
@@ -97,7 +92,6 @@ export async function generatePartyAnswers(
 
     return answers;
   } catch (error) {
-    console.error('Error generating party answers:', error);
     throw new Error(
       `Failed to generate answers: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -110,7 +104,7 @@ export async function generatePartyAnswers(
 function generateContextualAnswer(
   query: string,
   results: RetrievalResult[],
-  partyName: string
+  _partyName: string
 ): string {
   if (results.length === 0) {
     return `Ikke omtalt i partiprogrammet (${new Date().getFullYear()}).`;
@@ -121,7 +115,7 @@ function generateContextualAnswer(
   const topResults = sortedResults.slice(0, 3);
 
   // Create a comprehensive answer based on the top results
-  const contextParts = topResults.map((result, index) => {
+  const contextParts = topResults.map((result, _index) => {
     let part = result.content;
 
     // Add context about the source if available
@@ -144,20 +138,20 @@ function generateContextualAnswer(
  * Create a Norwegian answer based on the context
  * This is a simplified implementation - in production you'd use an LLM
  */
-function createNorwegianAnswer(context: string, query: string): string {
+function createNorwegianAnswer(context: string, _query: string): string {
   // This is a very basic implementation
   // In practice, you would use the AI SDK to generate a proper answer
   const sentences = context.split('.').filter((s) => s.trim().length > 0);
   const relevantSentences = sentences.slice(0, 3);
 
-  return relevantSentences.join('. ') + '.';
+  return `${relevantSentences.join('. ')}.`;
 }
 
 /**
  * Generate a comparison summary between different party positions
  */
 export async function generateComparisonSummary(
-  query: string,
+  _query: string,
   partyAnswers: PartyAnswer[]
 ): Promise<ComparisonSummary> {
   try {
@@ -187,7 +181,6 @@ export async function generateComparisonSummary(
       citations,
     };
   } catch (error) {
-    console.error('Error generating comparison summary:', error);
     throw new Error(
       `Failed to generate comparison: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -293,7 +286,7 @@ function extractComparativeCitations(answers: PartyAnswer[]): Array<{
       const topCitation = answer.citations[0]; // Most relevant citation
 
       citations.push({
-        point: topCitation.content.substring(0, 100) + '...', // Truncate for display
+        point: `${topCitation.content.substring(0, 100)}...`, // Truncate for display
         supportingParties: [answer.party],
         citation: topCitation,
       });
@@ -317,7 +310,6 @@ export async function getAllParties(): Promise<PartyInfo[]> {
       color: party.color,
     }));
   } catch (error) {
-    console.error('Error getting parties:', error);
     throw new Error(
       `Failed to get parties: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -338,7 +330,6 @@ export async function searchAllContent(
 
     return await findRelevantContentByParties(query, partyIds, limit, 0.5);
   } catch (error) {
-    console.error('Error searching all content:', error);
     throw new Error(
       `Failed to search content: ${error instanceof Error ? error.message : 'Unknown error'}`
     );

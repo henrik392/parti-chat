@@ -6,12 +6,12 @@ import { embeddings, parties, partyPrograms } from '../db/schema';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
 
-export interface EmbeddingResult {
+export type EmbeddingResult = {
   embedding: number[];
   content: string;
-}
+};
 
-export interface RetrievalResult {
+export type RetrievalResult = {
   content: string;
   similarity: number;
   partyName: string;
@@ -19,7 +19,7 @@ export interface RetrievalResult {
   chapterTitle?: string;
   pageNumber?: number;
   partyColor: string;
-}
+};
 
 /**
  * Generate embeddings for multiple text chunks
@@ -28,8 +28,6 @@ export async function generateEmbeddings(
   texts: string[]
 ): Promise<EmbeddingResult[]> {
   try {
-    console.log(`Generating embeddings for ${texts.length} text chunks...`);
-
     const { embeddings } = await embedMany({
       model: embeddingModel,
       values: texts,
@@ -40,7 +38,6 @@ export async function generateEmbeddings(
       content: texts[i],
     }));
   } catch (error) {
-    console.error('Error generating embeddings:', error);
     throw new Error(
       `Failed to generate embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -60,7 +57,6 @@ export async function generateSingleEmbedding(text: string): Promise<number[]> {
 
     return embedding;
   } catch (error) {
-    console.error('Error generating single embedding:', error);
     throw new Error(
       `Failed to generate embedding: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -77,10 +73,6 @@ export async function findRelevantContentByParties(
   minSimilarity = 0.7
 ): Promise<RetrievalResult[]> {
   try {
-    console.log(
-      `Searching for content related to: "${query}" from ${partyIds.length} parties`
-    );
-
     // Generate embedding for the query
     const queryEmbedding = await generateSingleEmbedding(query);
 
@@ -111,8 +103,6 @@ export async function findRelevantContentByParties(
       .orderBy(desc(similarity))
       .limit(limit);
 
-    console.log(`Found ${results.length} relevant results`);
-
     return results.map((result) => ({
       content: result.content,
       similarity: result.similarity,
@@ -123,7 +113,6 @@ export async function findRelevantContentByParties(
       partyColor: result.partyColor,
     }));
   } catch (error) {
-    console.error('Error finding relevant content:', error);
     throw new Error(
       `Failed to find relevant content: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -139,10 +128,6 @@ export async function findRelevantContentAllParties(
   minSimilarity = 0.6
 ): Promise<{ [partyId: string]: RetrievalResult[] }> {
   try {
-    console.log(
-      `Searching for content related to: "${query}" from all parties`
-    );
-
     // Generate embedding for the query
     const queryEmbedding = await generateSingleEmbedding(query);
 
@@ -187,13 +172,8 @@ export async function findRelevantContentAllParties(
       }));
     }
 
-    console.log(
-      `Found results for ${Object.keys(resultsByParty).length} parties`
-    );
-
     return resultsByParty;
   } catch (error) {
-    console.error('Error finding relevant content for all parties:', error);
     throw new Error(
       `Failed to find relevant content: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
@@ -246,7 +226,6 @@ export async function findSimilarContentInProgram(
       partyColor: result.partyColor,
     }));
   } catch (error) {
-    console.error('Error finding similar content in program:', error);
     throw new Error(
       `Failed to find similar content: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
