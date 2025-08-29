@@ -3,14 +3,23 @@ import type { RouterClient } from '@orpc/server';
 import { streamToEventIterator } from '@orpc/server';
 import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
+import { findRelevantContentByParties } from '../lib/embedding-generator';
 import { protectedProcedure, publicProcedure } from '../lib/orpc';
 import {
   generateComparisonSummary,
   generatePartyAnswers,
 } from '../lib/rag-service';
 
+// Constants for RAG
+const DEFAULT_CONTENT_LIMIT = 5;
+const DEFAULT_SIMILARITY_THRESHOLD = 0.6;
+
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
+  partyId: z
+    .string()
+    .optional()
+    .describe('Specific party ID for party-based responses'),
 });
 
 const questionInputSchema = z.object({
@@ -101,11 +110,91 @@ export const appRouter = {
     };
   }),
 
-  chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
+  chat: publicProcedure.input(chatInputSchema).handler(async ({ input }) => {
+    const { messages, partyId } = input;
+
+    // If no party ID is provided, use the generic chat
+    if (!partyId) {
+      const result = streamText({
+        model: openrouter('openai/gpt-5-mini'),
+        messages: convertToModelMessages(messages),
+        system: 'You are a helpful assistant.',
+      });
+      return streamToEventIterator(result.toUIMessageStream());
+    }
+
+    // Find the party information
+    const party = PARTIES.find((p) => p.id === partyId);
+    if (!party) {
+      throw new Error(`Party not found: ${partyId}`);
+    }
+
+    // Get the user's question from the last message
+    const lastMessage = messages.at(-1);
+    const userQuestion =
+      typeof lastMessage?.content === 'string'
+        ? lastMessage.content
+        : lastMessage?.content[0]?.text || '';
+
+    if (!userQuestion) {
+      throw new Error('No question provided');
+    }
+
+    // Get relevant content for this party using RAG
+    const relevantContent = await findRelevantContentByParties(
+      userQuestion,
+      [partyId],
+      DEFAULT_CONTENT_LIMIT,
+      DEFAULT_SIMILARITY_THRESHOLD
+    );
+
+    // Build context from retrieved content
+    let ragContext = '';
+    let ragCitations = '';
+
+    if (relevantContent.length === 0) {
+      ragContext = `Ingen relevant informasjon funnet i ${party.name}s partiprogram.`;
+    } else {
+      ragContext = relevantContent
+        .map(
+          (contentResult) =>
+            `Fra ${party.name}s partiprogram${contentResult.chapterTitle ? ` (${contentResult.chapterTitle})` : ''}: ${contentResult.content}`
+        )
+        .join('\n\n');
+
+      ragCitations = relevantContent
+        .map(
+          (citationResult, citationIndex) =>
+            `[${citationIndex + 1}] ${citationResult.chapterTitle || 'Ukjent kapittel'}${citationResult.pageNumber ? `, side ${citationResult.pageNumber}` : ''}`
+        )
+        .join('\n');
+    }
+
+    // Create system message with party-specific context
+    const systemMessage = `Du er en ekspert på norsk politikk som svarer på vegne av ${party.name} (${party.shortName}).
+
+Basér ditt svar UTELUKKENDE på følgende informasjon fra partiets offisielle program:
+
+${ragContext}
+
+Regler for svaret:
+1. Svar på norsk bokmål
+2. Hold svaret til 3-6 setninger
+3. Kun bruk informasjon fra konteksten over
+4. Hvis spørsmålet ikke dekkes av konteksten, svar: "Ikke omtalt i partiprogrammet (${new Date().getFullYear()})."
+5. Ikke spekuler eller legg til egen tolkning
+6. Vær nøytral og faktaorientert
+
+Kilder som kan refereres til:
+${ragCitations}`;
+
     const result = streamText({
       model: openrouter('openai/gpt-5-mini'),
-      messages: convertToModelMessages(input.messages),
-      system: 'You are a helpful assistant.',
+      messages: [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: userQuestion },
+      ],
+      temperature: 0.1, // Low temperature for factual responses
     });
 
     return streamToEventIterator(result.toUIMessageStream());

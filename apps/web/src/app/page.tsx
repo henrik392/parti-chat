@@ -1,14 +1,11 @@
 'use client';
 
-import { useChat } from '@ai-sdk/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation';
-import { Loader } from '@/components/ai-elements/loader';
-import { Message, MessageContent } from '@/components/ai-elements/message';
 import {
   PromptInput,
   PromptInputSubmit,
@@ -16,20 +13,17 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from '@/components/ai-elements/reasoning';
-import { Response } from '@/components/ai-elements/response';
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from '@/components/ai-elements/sources';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
+import { PartyCard } from '@/components/party-card';
 import { PartySelector } from '@/components/party-selector';
+import { useMultiPartyChat } from '@/hooks/useMultiPartyChat';
+
+type Party = {
+  id: string;
+  name: string;
+  shortName: string;
+  color: string;
+};
 
 const suggestions = [
   'Hva er partiets syn på klimapolitikk?',
@@ -41,45 +35,58 @@ const suggestions = [
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
-  const { messages, sendMessage, status } = useChat({
-    transport: {
-      async sendMessages(options) {
-        const { client } = await import('@/utils/orpc');
-        const { eventIteratorToStream } = await import('@orpc/client');
+  const [selectedParties, setSelectedParties] = useState<Party[]>([]);
+  const [allParties, setAllParties] = useState<Party[]>([]);
 
-        return eventIteratorToStream(
-          await client.chat(
-            {
-              messages: options.messages,
-            },
-            { signal: options.abortSignal }
-          )
-        );
-      },
-      reconnectToStream() {
-        throw new Error('Reconnection not supported');
-      },
-    },
-  });
+  const { partyChats, isAnyLoading, sendToAll } =
+    useMultiPartyChat(selectedParties);
+
+  // Fetch all parties on component mount
+  useEffect(() => {
+    async function fetchParties() {
+      try {
+        const { client } = await import('@/utils/orpc');
+        const partyData = await client.getParties();
+        setAllParties([...partyData]);
+      } catch {
+        // Failed to fetch parties, continue with empty list
+      }
+    }
+    fetchParties();
+  }, []);
+
+  // Update selected parties when IDs change
+  useEffect(() => {
+    const parties = allParties.filter((party) =>
+      selectedPartyIds.includes(party.id)
+    );
+    setSelectedParties(parties);
+  }, [selectedPartyIds, allParties]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim()) {
-      sendMessage({ text: input });
+    if (input.trim() && selectedParties.length > 0) {
+      sendToAll(input);
       setInput('');
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    sendMessage({ text: suggestion });
+    if (selectedParties.length > 0) {
+      sendToAll(suggestion);
+    }
   };
 
+  // Check if we have any responses to show
+  const hasAnyResponses = partyChats.some((chat) => chat.messages.length > 0);
+
   return (
-    <div className="relative mx-auto size-full h-screen max-w-4xl p-6">
+    <div className="relative mx-auto size-full h-screen max-w-7xl p-6">
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
-            {messages.length === 0 && (
+            {/* Empty State */}
+            {!hasAnyResponses && (
               <div className="flex h-full flex-col items-center justify-center gap-6">
                 <div className="text-center">
                   <h2 className="mb-2 font-semibold text-2xl">
@@ -89,72 +96,55 @@ const ChatBotDemo = () => {
                     Velg partier og still spørsmål for å sammenligne politiske
                     standpunkter
                   </p>
+
+                  {selectedParties.length === 0 && (
+                    <p className="mb-4 text-muted-foreground text-sm">
+                      Velg minst ett parti for å komme i gang
+                    </p>
+                  )}
                 </div>
-                <Suggestions className="max-w-2xl">
-                  {suggestions.map((suggestion) => (
-                    <Suggestion
-                      key={suggestion}
-                      onClick={handleSuggestionClick}
-                      suggestion={suggestion}
-                    />
-                  ))}
-                </Suggestions>
+
+                {selectedParties.length > 0 && (
+                  <Suggestions className="max-w-2xl">
+                    {suggestions.map((suggestion) => (
+                      <Suggestion
+                        key={suggestion}
+                        onClick={handleSuggestionClick}
+                        suggestion={suggestion}
+                      />
+                    ))}
+                  </Suggestions>
+                )}
               </div>
             )}
-            {messages.map((message) => (
-              <div key={message.id}>
-                {message.role === 'assistant' && (
-                  <Sources>
-                    <SourcesTrigger
-                      count={
-                        message.parts.filter(
-                          (part) => part.type === 'source-url'
-                        ).length
-                      }
+
+            {/* Party Cards Grid */}
+            {hasAnyResponses && (
+              <div className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {partyChats.map((partyChat) => (
+                    <PartyCard
+                      error={partyChat.error}
+                      isLoading={partyChat.isLoading}
+                      key={partyChat.party.id}
+                      messages={partyChat.messages}
+                      party={partyChat.party}
                     />
-                    {message.parts
-                      .filter((part) => part.type === 'source-url')
-                      .map((part, i) => (
-                        <SourcesContent key={`${message.id}-${i}`}>
-                          <Source
-                            href={part.url}
-                            key={`${message.id}-${i}`}
-                            title={part.url}
-                          />
-                        </SourcesContent>
-                      ))}
-                  </Sources>
+                  ))}
+                </div>
+
+                {/* Comparison Summary Placeholder */}
+                {partyChats.filter((chat) => chat.messages.length > 0).length >
+                  1 && (
+                  <div className="mt-8 text-center">
+                    {/* TODO: Add comparison summary button */}
+                    <div className="rounded-lg border border-dashed p-6 text-muted-foreground">
+                      Sammenligning kommer snart...
+                    </div>
+                  </div>
                 )}
-                <Message from={message.role} key={message.id}>
-                  <MessageContent>
-                    {message.parts.map((part, i) => {
-                      switch (part.type) {
-                        case 'text':
-                          return (
-                            <Response key={`${message.id}-${i}`}>
-                              {part.text}
-                            </Response>
-                          );
-                        case 'reasoning':
-                          return (
-                            <Reasoning
-                              className="w-full"
-                              isStreaming={status === 'streaming'}
-                              key={`${message.id}-${i}`}
-                            >
-                              <ReasoningTrigger />
-                              <ReasoningContent>{part.text}</ReasoningContent>
-                            </Reasoning>
-                          );
-                        default:
-                          return null;
-                      }
-                    })}
-                  </MessageContent>
-                </Message>
               </div>
-            ))}
-            {status === 'submitted' && <Loader />}
+            )}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -186,7 +176,7 @@ const ChatBotDemo = () => {
               </PromptInputTools>
               <PromptInputSubmit
                 disabled={!input || selectedPartyIds.length === 0}
-                status={status}
+                status={isAnyLoading ? 'streaming' : undefined}
               />
             </PromptInputToolbar>
           </PromptInput>
