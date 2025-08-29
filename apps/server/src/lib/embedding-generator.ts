@@ -28,12 +28,12 @@ export async function generateEmbeddings(
   texts: string[]
 ): Promise<EmbeddingResult[]> {
   try {
-    const { embeddings } = await embedMany({
+    const { embeddings: embeddingResults } = await embedMany({
       model: embeddingModel,
       values: texts,
     });
 
-    return embeddings.map((embedding, i) => ({
+    return embeddingResults.map((embedding, i) => ({
       embedding,
       content: texts[i],
     }));

@@ -41,5 +41,8 @@
       "bun x ultracite format"
     ]
   },
-  "packageManager": "bun@1.2.21"
+  "packageManager": "bun@1.2.21",
+  "patchedDependencies": {
+    "pdf-parse@1.1.1": "patches/pdf-parse@1.1.1.patch"
+  }
 }

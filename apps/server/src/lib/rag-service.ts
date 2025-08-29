@@ -6,6 +6,15 @@ import {
   type RetrievalResult,
 } from './embedding-generator';
 
+// Constants
+const WORD_SPLIT_REGEX = /\s+/;
+const MIN_UNIQUE_WORD_LENGTH = 4;
+const MAX_COMPARISON_DIFFERENCES = 3;
+const CITATION_PREVIEW_LENGTH = 100;
+const MAX_CITATIONS = 5;
+const DEFAULT_SIMILARITY_THRESHOLD = 0.5;
+const DEFAULT_CONTENT_LIMIT = 5;
+
 export type PartyInfo = {
   id: string;
   name: string;
@@ -59,7 +68,7 @@ export async function generatePartyAnswers(
       const relevantContent = await findRelevantContentByParties(
         query,
         [party.id],
-        5,
+        DEFAULT_CONTENT_LIMIT,
         minSimilarity
       );
 
@@ -112,7 +121,7 @@ function generateContextualAnswer(
 
   // Sort by similarity and take the most relevant content
   const sortedResults = results.sort((a, b) => b.similarity - a.similarity);
-  const topResults = sortedResults.slice(0, 3);
+  const topResults = sortedResults.slice(0, MAX_COMPARISON_DIFFERENCES);
 
   // Create a comprehensive answer based on the top results
   const contextParts = topResults.map((result, _index) => {
@@ -142,7 +151,7 @@ function createNorwegianAnswer(context: string, _query: string): string {
   // This is a very basic implementation
   // In practice, you would use the AI SDK to generate a proper answer
   const sentences = context.split('.').filter((s) => s.trim().length > 0);
-  const relevantSentences = sentences.slice(0, 3);
+  const relevantSentences = sentences.slice(0, MAX_COMPARISON_DIFFERENCES);
 
   return `${relevantSentences.join('. ')}.`;
 }
@@ -150,10 +159,10 @@ function createNorwegianAnswer(context: string, _query: string): string {
 /**
  * Generate a comparison summary between different party positions
  */
-export async function generateComparisonSummary(
+export function generateComparisonSummary(
   _query: string,
   partyAnswers: PartyAnswer[]
-): Promise<ComparisonSummary> {
+): ComparisonSummary {
   try {
     const answersWithContent = partyAnswers.filter(
       (answer) => answer.hasContent
@@ -198,35 +207,35 @@ function findSimilarities(answers: PartyAnswer[]): string[] {
   const keywordCounts: { [key: string]: string[] } = {};
 
   // Extract keywords from each answer
-  answers.forEach((answer) => {
+  for (const answer of answers) {
     const words = answer.answer
       .toLowerCase()
-      .split(/\s+/)
-      .filter((word) => word.length > 4) // Only meaningful words
+      .split(WORD_SPLIT_REGEX)
+      .filter((word) => word.length > MIN_UNIQUE_WORD_LENGTH) // Only meaningful words
       .filter((word) => !['ikke', 'omtalt', 'partiprogrammet'].includes(word));
 
-    words.forEach((word) => {
+    for (const word of words) {
       if (!keywordCounts[word]) {
         keywordCounts[word] = [];
       }
       keywordCounts[word].push(answer.party.shortName);
-    });
-  });
+    }
+  }
 
   // Find common keywords
-  Object.entries(keywordCounts).forEach(([keyword, partiesWithKeyword]) => {
+  for (const [keyword, partiesWithKeyword] of Object.entries(keywordCounts)) {
     if (partiesWithKeyword.length > 1) {
       similarities.push(
         `${partiesWithKeyword.join(', ')} har lignende fokus på ${keyword}`
       );
     }
-  });
+  }
 
   if (similarities.length === 0) {
     similarities.push('Ingen tydelige likheter funnet i programmene.');
   }
 
-  return similarities.slice(0, 3); // Limit to top 3
+  return similarities.slice(0, MAX_COMPARISON_DIFFERENCES); // Limit to top 3
 }
 
 /**
@@ -239,17 +248,21 @@ function findDifferences(answers: PartyAnswer[]): string[] {
   const differences: string[] = [];
 
   // Simple approach: compare answer lengths and some keywords
-  answers.forEach((answer, index) => {
+  for (const [index, answer] of answers.entries()) {
     const otherAnswers = answers.filter((_, i) => i !== index);
 
     // Check for unique keywords in this answer
-    const thisWords = new Set(answer.answer.toLowerCase().split(/\s+/));
+    const thisWords = new Set(
+      answer.answer.toLowerCase().split(WORD_SPLIT_REGEX)
+    );
     const otherWords = new Set(
-      otherAnswers.flatMap((a) => a.answer.toLowerCase().split(/\s+/))
+      otherAnswers.flatMap((a) =>
+        a.answer.toLowerCase().split(WORD_SPLIT_REGEX)
+      )
     );
 
     const uniqueWords = Array.from(thisWords).filter(
-      (word) => !otherWords.has(word) && word.length > 4
+      (word) => !otherWords.has(word) && word.length > MIN_UNIQUE_WORD_LENGTH
     );
 
     if (uniqueWords.length > 0) {
@@ -257,13 +270,13 @@ function findDifferences(answers: PartyAnswer[]): string[] {
         `${answer.party.shortName} skiller seg ut ved å fokusere på ${uniqueWords.slice(0, 2).join(', ')}`
       );
     }
-  });
+  }
 
   if (differences.length === 0) {
     differences.push('Ingen markante forskjeller identifisert.');
   }
 
-  return differences.slice(0, 3); // Limit to top 3
+  return differences.slice(0, MAX_COMPARISON_DIFFERENCES); // Limit to top 3
 }
 
 /**
@@ -281,19 +294,19 @@ function extractComparativeCitations(answers: PartyAnswer[]): Array<{
   }> = [];
 
   // Group similar citations
-  answers.forEach((answer) => {
+  for (const answer of answers) {
     if (answer.citations.length > 0) {
       const topCitation = answer.citations[0]; // Most relevant citation
 
       citations.push({
-        point: `${topCitation.content.substring(0, 100)}...`, // Truncate for display
+        point: `${topCitation.content.substring(0, CITATION_PREVIEW_LENGTH)}...`, // Truncate for display
         supportingParties: [answer.party],
         citation: topCitation,
       });
     }
-  });
+  }
 
-  return citations.slice(0, 5); // Limit to top 5
+  return citations.slice(0, MAX_CITATIONS); // Limit to top 5
 }
 
 /**
@@ -328,7 +341,12 @@ export async function searchAllContent(
     const allParties = await db.select({ id: parties.id }).from(parties);
     const partyIds = allParties.map((p) => p.id);
 
-    return await findRelevantContentByParties(query, partyIds, limit, 0.5);
+    return await findRelevantContentByParties(
+      query,
+      partyIds,
+      limit,
+      DEFAULT_SIMILARITY_THRESHOLD
+    );
   } catch (error) {
     throw new Error(
       `Failed to search content: ${error instanceof Error ? error.message : 'Unknown error'}`

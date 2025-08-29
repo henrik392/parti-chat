@@ -7,6 +7,22 @@ import { embeddings, parties, partyPrograms } from '../db/schema';
 import { generateEmbeddings } from './embedding-generator';
 import { chunkPDFContent, processPDF } from './pdf-processor';
 
+// Progress constants
+const PROGRESS_FILE_VALIDATED = 20;
+const PROGRESS_PROGRAM_READY = 30;
+const PROGRESS_PDF_PROCESSED = 50;
+const PROGRESS_CHUNKS_CREATED = 70;
+const PROGRESS_EMBEDDINGS_GENERATED = 85;
+const PROGRESS_EMBEDDINGS_STORED = 95;
+const PROGRESS_COMPLETED = 100;
+
+// Progress threshold constants for messages
+const PROGRESS_THRESHOLD_PREPARING = 20;
+const PROGRESS_THRESHOLD_PDF_PROCESSING = 40;
+const PROGRESS_THRESHOLD_CHUNKING = 70;
+const PROGRESS_THRESHOLD_EMBEDDING = 90;
+const PROGRESS_THRESHOLD_SAVING = 100;
+
 // Norwegian party data - you can expand this
 const PARTY_DATA = [
   { shortName: 'ap', name: 'Arbeiderpartiet', color: '#e30613' },
@@ -86,7 +102,7 @@ export async function ingestAllPartyPrograms(
         });
 
         result.progress[i].status = 'completed';
-        result.progress[i].progress = 100;
+        result.progress[i].progress = PROGRESS_COMPLETED;
         result.progress[i].message = 'Successfully processed';
         result.totalProcessed++;
       } catch (error) {
@@ -130,7 +146,7 @@ async function ingestSinglePartyProgram(
     throw new Error(`Party not found: ${partyShortName}`);
   }
 
-  progressCallback?.(20);
+  progressCallback?.(PROGRESS_FILE_VALIDATED);
 
   // Check if this program already exists
   const existingProgram = await db.query.partyPrograms.findFirst({
@@ -141,12 +157,12 @@ async function ingestSinglePartyProgram(
     return;
   }
 
-  progressCallback?.(30);
+  progressCallback?.(PROGRESS_PROGRAM_READY);
 
   try {
     const processedPDF = await processPDF(filePath);
 
-    progressCallback?.(50);
+    progressCallback?.(PROGRESS_PDF_PROCESSED);
 
     // Create or update the party program record
     const programId = existingProgram?.id || uuidv4();
@@ -178,12 +194,12 @@ async function ingestSinglePartyProgram(
     progressCallback?.(60);
     const chunks = await chunkPDFContent(processedPDF);
 
-    progressCallback?.(70);
+    progressCallback?.(PROGRESS_CHUNKS_CREATED);
     const embeddings_data = await generateEmbeddings(
       chunks.map((c) => c.content)
     );
 
-    progressCallback?.(85);
+    progressCallback?.(PROGRESS_EMBEDDINGS_GENERATED);
 
     // Clear existing embeddings for this program
     await db.delete(embeddings).where(eq(embeddings.partyProgramId, programId));
@@ -200,7 +216,7 @@ async function ingestSinglePartyProgram(
 
     await db.insert(embeddings).values(embeddingsToInsert);
 
-    progressCallback?.(95);
+    progressCallback?.(PROGRESS_EMBEDDINGS_STORED);
 
     // Mark as completed
     await db
@@ -211,7 +227,7 @@ async function ingestSinglePartyProgram(
       })
       .where(eq(partyPrograms.id, programId));
 
-    progressCallback?.(100);
+    progressCallback?.(PROGRESS_COMPLETED);
   } catch (error) {
     // Mark as failed
     if (existingProgram?.id) {
@@ -254,19 +270,19 @@ async function initializeParties(): Promise<void> {
  * Get human-readable progress message
  */
 function getProgressMessage(progress: number): string {
-  if (progress < 20) {
+  if (progress < PROGRESS_THRESHOLD_PREPARING) {
     return 'Preparing...';
   }
-  if (progress < 40) {
+  if (progress < PROGRESS_THRESHOLD_PDF_PROCESSING) {
     return 'Processing PDF...';
   }
-  if (progress < 70) {
+  if (progress < PROGRESS_THRESHOLD_CHUNKING) {
     return 'Chunking content...';
   }
-  if (progress < 90) {
+  if (progress < PROGRESS_THRESHOLD_EMBEDDING) {
     return 'Generating embeddings...';
   }
-  if (progress < 100) {
+  if (progress < PROGRESS_THRESHOLD_SAVING) {
     return 'Saving to database...';
   }
   return 'Completed';
@@ -284,21 +300,31 @@ export async function getIngestionStatus(): Promise<
     lastProcessed?: Date;
   }>
 > {
-  const programs = await db.query.partyPrograms.findMany({
-    with: {
-      party: true,
-    },
-  });
+  const programs = await db.select().from(partyPrograms);
 
-  const result = [];
+  const result: Array<{
+    party: string;
+    status: string;
+    totalPages?: number;
+    totalEmbeddings: number;
+    lastProcessed?: Date;
+  }> = [];
 
   for (const program of programs) {
-    const embeddingCount = await db.query.embeddings.findMany({
-      where: eq(embeddings.partyProgramId, program.id),
-    });
+    // Get the party information
+    const party = await db
+      .select()
+      .from(parties)
+      .where(eq(parties.id, program.partyId))
+      .limit(1);
+
+    const embeddingCount = await db
+      .select()
+      .from(embeddings)
+      .where(eq(embeddings.partyProgramId, program.id));
 
     result.push({
-      party: program.party.name,
+      party: party[0]?.name || 'Unknown',
       status: program.isProcessed,
       totalPages: program.totalPages || undefined,
       totalEmbeddings: embeddingCount.length,

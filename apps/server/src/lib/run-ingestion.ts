@@ -13,13 +13,13 @@ async function runIngestion() {
 
           if (p.error) {
             logger.error(
-              { file: p.file, error: p.error },
-              `${statusEmoji} Failed to process ${p.file}`
+              { party: p.partyShortName, error: p.error },
+              `${statusEmoji} Failed to process ${p.partyShortName}`
             );
           } else {
             logger.info(
-              { file: p.file, status: p.status },
-              `${statusEmoji} ${p.file}`
+              { party: p.partyShortName, status: p.status },
+              `${statusEmoji} ${p.partyShortName}: ${p.message}`
             );
           }
         }
@@ -33,8 +33,8 @@ async function runIngestion() {
       );
       for (const failed of result.failed) {
         logger.error(
-          { file: failed.file, error: failed.error },
-          `Failed: ${failed.file}`
+          { party: failed.party, error: failed.error },
+          `Failed: ${failed.party}`
         );
       }
     } else {
