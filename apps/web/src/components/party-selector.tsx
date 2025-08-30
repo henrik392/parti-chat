@@ -65,9 +65,9 @@ export function PartySelector({
               aria-label={party.name}
               className={cn(
                 '!rounded-full relative h-8 flex-none overflow-hidden px-4 text-xs',
-                'border transition-colors duration-150 ease-out',
+                'border transition-all duration-100 ease-in-out',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                'hover:bg-muted/70 hover:text-foreground data-[state=on]:hover:bg-transparent data-[state=on]:hover:text-[color:var(--party-contrast)]',
+                'data-[state=off]:hover:!bg-gray-50 data-[state=off]:hover:!border-2 data-[state=off]:hover:!font-bold data-[state=off]:hover:shadow-sm',
                 'data-[state=on]:font-bold data-[state=on]:text-[color:var(--party-contrast)] data-[state=on]:shadow-sm data-[state=on]:hover:scale-[1.02] data-[state=on]:hover:shadow-md',
                 'data-[state=off]:font-medium',
                 'will-change-transform active:scale-[0.97] data-[state=on]:active:scale-[0.96]'
