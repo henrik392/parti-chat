@@ -1,17 +1,10 @@
 'use client';
 
 import { CheckIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PARTIES } from '@/lib/parties';
 import { cn } from '@/lib/utils';
-
-type Party = {
-  id: string;
-  name: string;
-  shortName: string;
-  color: string;
-};
 
 type PartySelectorProps = {
   selectedPartyIds: string[];
@@ -24,25 +17,6 @@ export function PartySelector({
   onSelectionChange,
   className,
 }: PartySelectorProps) {
-  const [parties, setParties] = useState<Party[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchParties() {
-      try {
-        const { client } = await import('@/utils/orpc');
-        const partyData = await client.getParties();
-        setParties([...partyData]);
-      } catch {
-        // Failed to fetch parties, continue with empty list
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchParties();
-  }, []);
-
   const toggleParty = (partyId: string) => {
     if (selectedPartyIds.includes(partyId)) {
       onSelectionChange(selectedPartyIds.filter((id) => id !== partyId));
@@ -51,33 +25,9 @@ export function PartySelector({
     }
   };
 
-  if (loading) {
-    const skeletonIds = [
-      'ap',
-      'frp',
-      'h',
-      'krf',
-      'mdg',
-      'rodt',
-      'sp',
-      'sv',
-      'v',
-    ];
-    return (
-      <div className={cn('flex flex-wrap gap-2', className)}>
-        {skeletonIds.map((id) => (
-          <div
-            className="h-8 w-12 animate-pulse rounded-md bg-muted"
-            key={`skeleton-${id}`}
-          />
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
-      {parties.map((party) => {
+      {PARTIES.map((party) => {
         const isSelected = selectedPartyIds.includes(party.id);
 
         return (

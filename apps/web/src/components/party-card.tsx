@@ -12,14 +12,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
-
-type Party = {
-  id: string;
-  name: string;
-  shortName: string;
-  color: string;
-};
 
 type Citation = {
   content: string;

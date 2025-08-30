@@ -5,9 +5,9 @@ import UserMenu from './user-menu';
 
 export default function Header() {
   const links = [
-    { to: '/', label: 'AI Chat' },
-    { to: '/dashboard', label: 'Dashboard' },
-  ] as const;
+    { to: '/' as const, label: 'AI Chat' },
+    { to: '/dashboard' as const, label: 'Dashboard' },
+  ];
 
   return (
     <div>
@@ -15,7 +15,7 @@ export default function Header() {
         <nav className="flex gap-4 text-lg">
           {links.map(({ to, label }) => {
             return (
-              <Link href={to} key={to}>
+              <Link href={to as string} key={to}>
                 {label}
               </Link>
             );

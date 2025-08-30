@@ -34,6 +34,7 @@
     "@types/uuid": "^10.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
+    "shadcn": "^3.0.0",
     "turbo": "^2.5.6",
     "ultracite": "5.2.5"
   },

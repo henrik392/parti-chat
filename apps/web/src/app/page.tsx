@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -14,15 +14,18 @@ import {
   PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
-import { PartyCard } from '@/components/party-card';
 import { PartySelector } from '@/components/party-selector';
-import { useMultiPartyChat } from '@/hooks/use-multi-party-chat';
+import { PartyTabs } from '@/components/party-tabs';
+import { PARTIES, type Party } from '@/lib/parties';
 
-type Party = {
-  id: string;
-  name: string;
-  shortName: string;
-  color: string;
+type MessagePart = {
+  type: 'text';
+  text: string;
+};
+
+type Message = {
+  role: 'assistant' | 'user';
+  parts?: MessagePart[];
 };
 
 const suggestions = [
@@ -36,49 +39,141 @@ const ChatBotDemo = () => {
   const [input, setInput] = useState('');
   const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
   const [selectedParties, setSelectedParties] = useState<Party[]>([]);
-  const [allParties, setAllParties] = useState<Party[]>([]);
+  const [activePartyId, setActivePartyId] = useState<string>('');
 
-  const { partyChats, isAnyLoading, sendToAll } =
-    useMultiPartyChat(selectedParties);
-
-  // Fetch all parties on component mount
-  useEffect(() => {
-    async function fetchParties() {
-      try {
-        const { client } = await import('@/utils/orpc');
-        const partyData = await client.getParties();
-        setAllParties([...partyData]);
-      } catch {
-        // Failed to fetch parties, continue with empty list
-      }
-    }
-    fetchParties();
-  }, []);
+  // State for individual party chats
+  const [partyMessages, setPartyMessages] = useState<Record<string, Message[]>>(
+    {}
+  );
+  const [partyLoadingStates, setPartyLoadingStates] = useState<
+    Record<string, boolean>
+  >({});
+  const [partyErrors, setPartyErrors] = useState<Record<string, string | null>>(
+    {}
+  );
 
   // Update selected parties when IDs change
   useEffect(() => {
-    const parties = allParties.filter((party) =>
+    const parties = PARTIES.filter((party) =>
       selectedPartyIds.includes(party.id)
     );
     setSelectedParties(parties);
-  }, [selectedPartyIds, allParties]);
+
+    // Set first selected party as active if no active party
+    if (parties.length > 0 && !activePartyId) {
+      setActivePartyId(parties[0].id);
+    }
+
+    // Clear active party if it's no longer selected
+    if (activePartyId && !selectedPartyIds.includes(activePartyId)) {
+      setActivePartyId(parties[0]?.id || '');
+    }
+  }, [selectedPartyIds, activePartyId]);
+
+  const handleStreamResponse = useCallback(async (result: any) => {
+    let responseContent = '';
+    if (!result || typeof result[Symbol.asyncIterator] !== 'function') {
+      return responseContent;
+    }
+    const reader = result[Symbol.asyncIterator]();
+
+    try {
+      // biome-ignore lint/correctness/useValidForDirection: Iterator pattern
+      while (true) {
+        const { done, value } = await reader.next();
+        if (done) {
+          break;
+        }
+
+        if (
+          value &&
+          typeof value === 'object' &&
+          'type' in value &&
+          value.type === 'text-delta' &&
+          'textDelta' in value
+        ) {
+          responseContent += value.textDelta;
+        }
+      }
+    } catch {
+      // Silent stream error handling
+    }
+
+    return responseContent;
+  }, []);
+
+  const sendToParty = useCallback(
+    async (question: string, partyId: string) => {
+      setPartyLoadingStates((prev) => ({ ...prev, [partyId]: true }));
+      setPartyErrors((prev) => ({ ...prev, [partyId]: null }));
+
+      try {
+        const { client } = await import('@/utils/orpc');
+
+        const messages = [
+          {
+            role: 'user' as const,
+            content: question,
+          },
+        ];
+
+        const result = await client.chat({
+          messages,
+          partyId,
+        });
+
+        const responseContent = await handleStreamResponse(result);
+
+        // biome-ignore lint/nursery/noUnnecessaryConditions: Content can be empty string
+        if (responseContent) {
+          setPartyMessages((prev) => ({
+            ...prev,
+            [partyId]: [
+              ...(prev[partyId] || []),
+              {
+                role: 'assistant',
+                parts: [{ type: 'text', text: responseContent }],
+              },
+            ],
+          }));
+        } else {
+          setPartyErrors((prev) => ({
+            ...prev,
+            [partyId]: 'No response received',
+          }));
+        }
+      } catch (error) {
+        setPartyErrors((prev) => ({
+          ...prev,
+          [partyId]: error instanceof Error ? error.message : 'Unknown error',
+        }));
+      } finally {
+        setPartyLoadingStates((prev) => ({ ...prev, [partyId]: false }));
+      }
+    },
+    [handleStreamResponse]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && selectedParties.length > 0) {
-      sendToAll(input);
+    if (input.trim() && activePartyId) {
+      sendToParty(input, activePartyId);
       setInput('');
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    if (selectedParties.length > 0) {
-      sendToAll(suggestion);
+    if (activePartyId) {
+      sendToParty(suggestion, activePartyId);
     }
   };
 
-  // Check if we have any responses to show
-  const hasAnyResponses = partyChats.some((chat) => chat.messages.length > 0);
+  const isAnyLoading = Object.values(partyLoadingStates).some(
+    (loading) => loading
+  );
+  const hasAnyMessages = Object.values(partyMessages).some(
+    (messages) => messages.length > 0
+  );
 
   return (
     <div className="relative mx-auto size-full h-screen max-w-7xl p-6">
@@ -86,15 +181,15 @@ const ChatBotDemo = () => {
         <Conversation className="h-full">
           <ConversationContent>
             {/* Empty State */}
-            {!hasAnyResponses && (
+            {!hasAnyMessages && (
               <div className="flex h-full flex-col items-center justify-center gap-6">
                 <div className="text-center">
                   <h2 className="mb-2 font-semibold text-2xl">
-                    Multi-Party Political Q&A Chat
+                    Political Party Chat
                   </h2>
                   <p className="mb-6 text-muted-foreground">
-                    Velg partier og still spørsmål for å sammenligne politiske
-                    standpunkter
+                    Velg partier og still spørsmål for å få svar fra
+                    partiprogram
                   </p>
 
                   {selectedParties.length === 0 && (
@@ -118,32 +213,16 @@ const ChatBotDemo = () => {
               </div>
             )}
 
-            {/* Party Cards Grid */}
-            {hasAnyResponses && (
-              <div className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {partyChats.map((partyChat) => (
-                    <PartyCard
-                      error={partyChat.error}
-                      isLoading={partyChat.isLoading}
-                      key={partyChat.party.id}
-                      messages={partyChat.messages}
-                      party={partyChat.party}
-                    />
-                  ))}
-                </div>
-
-                {/* Comparison Summary Placeholder */}
-                {partyChats.filter((chat) => chat.messages.length > 0).length >
-                  1 && (
-                  <div className="mt-8 text-center">
-                    {/* TODO: Add comparison summary button */}
-                    <div className="rounded-lg border border-dashed p-6 text-muted-foreground">
-                      Sammenligning kommer snart...
-                    </div>
-                  </div>
-                )}
-              </div>
+            {/* Party Tabs for Mobile/Single View */}
+            {hasAnyMessages && selectedParties.length > 0 && activePartyId && (
+              <PartyTabs
+                activePartyId={activePartyId}
+                onTabChange={setActivePartyId}
+                parties={selectedParties}
+                partyErrors={partyErrors}
+                partyLoadingStates={partyLoadingStates}
+                partyMessages={partyMessages}
+              />
             )}
           </ConversationContent>
           <ConversationScrollButton />
@@ -159,11 +238,18 @@ const ChatBotDemo = () => {
           <PromptInput onSubmit={handleSubmit}>
             <PromptInputTextarea
               onChange={(e) => setInput(e.target.value)}
-              placeholder={
-                selectedPartyIds.length === 0
-                  ? 'Velg partier først, så still ditt spørsmål...'
-                  : 'Still ditt spørsmål...'
-              }
+              placeholder={(() => {
+                if (selectedPartyIds.length === 0) {
+                  return 'Velg partier først, så still ditt spørsmål...';
+                }
+                if (activePartyId) {
+                  const activeParty = selectedParties.find(
+                    (p) => p.id === activePartyId
+                  );
+                  return `Still spørsmål til ${activeParty?.shortName}...`;
+                }
+                return 'Still ditt spørsmål...';
+              })()}
               value={input}
             />
             <PromptInputToolbar>
@@ -173,9 +259,18 @@ const ChatBotDemo = () => {
                     Velg minst ett parti for å fortsette
                   </span>
                 )}
+                {selectedPartyIds.length > 0 && activePartyId && (
+                  <span className="text-muted-foreground text-sm">
+                    Chatter med{' '}
+                    {
+                      selectedParties.find((p) => p.id === activePartyId)
+                        ?.shortName
+                    }
+                  </span>
+                )}
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={!input || selectedPartyIds.length === 0}
+                disabled={!(input && activePartyId)}
                 status={isAnyLoading ? 'streaming' : undefined}
               />
             </PromptInputToolbar>
