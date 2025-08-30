@@ -3,8 +3,25 @@
 import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon, ExternalLinkIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  InlineCitation,
+  InlineCitationCard,
+  InlineCitationCardBody,
+  InlineCitationCardTrigger,
+  InlineCitationCarousel,
+  InlineCitationCarouselContent,
+  InlineCitationCarouselHeader,
+  InlineCitationCarouselIndex,
+  InlineCitationCarouselItem,
+  InlineCitationCarouselNext,
+  InlineCitationCarouselPrev,
+  InlineCitationQuote,
+  InlineCitationSource,
+  InlineCitationText,
+} from '@/components/ai-elements/inline-citation';
 import { Loader } from '@/components/ai-elements/loader';
+import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Response } from '@/components/ai-elements/response';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,6 +54,7 @@ export function PartyCard({
   className,
 }: PartyCardProps) {
   const [showCitations, setShowCitations] = useState(false);
+  const lastProcessedTimestamp = useRef<number | null>(null);
 
   // Use the useChat hook with oRPC transport for this specific party
   const { messages, sendMessage, status, error } = useChat({
@@ -59,10 +77,18 @@ export function PartyCard({
 
   // Listen for message triggers from parent
   useEffect(() => {
-    if (messageTrigger?.message) {
+    if (
+      messageTrigger?.message &&
+      messageTrigger.timestamp !== lastProcessedTimestamp.current
+    ) {
+      console.log(`[PartyCard] Sending message to party: ${party.id} (${party.shortName})`, {
+        message: messageTrigger.message,
+        partyId: party.id
+      });
       sendMessage({ text: messageTrigger.message });
+      lastProcessedTimestamp.current = messageTrigger.timestamp;
     }
-  }, [messageTrigger, sendMessage]);
+  }, [messageTrigger, sendMessage, party.id, party.shortName]);
 
   // Get the latest assistant message
   const latestResponse = messages
@@ -156,8 +182,40 @@ export function PartyCard({
           </div>
         )}
 
-        {/* Loading State */}
-        {isLoading && !responseText && (
+        {/* Conversation Messages */}
+        {hasMessages && (
+          <div className="space-y-4">
+            {messages.map((message) => (
+              <Message from={message.role} key={message.id}>
+                <MessageContent>
+                  {message.parts.map((part, partIndex) => {
+                    if (part.type === 'text') {
+                      return (
+                        <Response key={`${message.id}-${partIndex}`}>
+                          {part.text}
+                        </Response>
+                      );
+                    }
+                    return null;
+                  })}
+                </MessageContent>
+              </Message>
+            ))}
+            
+            {/* Streaming indicator */}
+            {isLoading && (
+              <div className="flex items-center gap-2 py-2">
+                <Loader />
+                <span className="text-muted-foreground text-sm">
+                  {party.shortName} svarer...
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Loading State for first message */}
+        {isLoading && !hasMessages && (
           <div className="flex items-center gap-2 py-8">
             <Loader />
             <span className="text-muted-foreground text-sm">
@@ -166,32 +224,9 @@ export function PartyCard({
           </div>
         )}
 
-        {/* Response */}
-        {responseText && (
-          <div className="space-y-4">
-            <div
-              className={cn(
-                'rounded-lg p-4',
-                isNotCovered
-                  ? 'border border-muted bg-muted/50'
-                  : 'border bg-background'
-              )}
-            >
-              <Response>{responseText}</Response>
-              {isLoading && (
-                <div className="mt-2 flex items-center gap-1">
-                  <div className="size-2 animate-pulse rounded-full bg-primary" />
-                  <div
-                    className="size-2 animate-pulse rounded-full bg-primary/70"
-                    style={{ animationDelay: '0.2s' }}
-                  />
-                  <div
-                    className="size-2 animate-pulse rounded-full bg-primary/40"
-                    style={{ animationDelay: '0.4s' }}
-                  />
-                </div>
-              )}
-            </div>
+        {/* Legacy single response section - keeping for citations */}
+        {responseText && citations.length > 0 && (
+          <div className="mt-4 space-y-4">
 
             {/* Citations Section */}
             {citations.length > 0 && (

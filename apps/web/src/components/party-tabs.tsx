@@ -1,7 +1,7 @@
 'use client';
 
 import { PartyCard } from '@/components/party-card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 
@@ -26,8 +26,9 @@ export function PartyTabs({
 
   return (
     <div className={cn('flex h-full w-full flex-col', className)}>
+      {/* Tab Navigation */}
       <Tabs
-        className="flex flex-1 flex-col"
+        className="flex flex-col"
         onValueChange={onTabChange}
         value={activePartyId}
       >
@@ -47,19 +48,24 @@ export function PartyTabs({
             </TabsTrigger>
           ))}
         </TabsList>
-
-        {parties.map((party) => {
-          return (
-            <TabsContent
-              className="mt-4 flex-1"
-              key={party.id}
-              value={party.id}
-            >
-              <PartyCard messageTrigger={messageTrigger} party={party} />
-            </TabsContent>
-          );
-        })}
       </Tabs>
+
+      {/* Party Cards - All rendered but only active one visible */}
+      <div className="mt-4 flex-1 relative">
+        {parties.map((party) => (
+          <div
+            key={party.id}
+            className={cn(
+              'absolute inset-0 transition-opacity duration-200',
+              party.id === activePartyId
+                ? 'opacity-100 pointer-events-auto'
+                : 'opacity-0 pointer-events-none'
+            )}
+          >
+            <PartyCard messageTrigger={messageTrigger} party={party} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
