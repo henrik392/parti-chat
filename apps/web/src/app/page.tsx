@@ -128,9 +128,9 @@ const ChatBotDemo = () => {
 
           <PromptInput
             onSubmit={handleSubmit}
-            className="flex items-center divide-y-0 px-3 py-2 border rounded-xl"
+            className="flex items-center divide-y-0 px-3 py-2 border rounded-3xl"
           >
-            <div className="flex w-full items-end gap-2">
+            <div className="flex w-full items-center gap-2">
               <PromptInputTextarea
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={(() => {

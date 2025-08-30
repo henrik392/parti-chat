@@ -1,10 +1,9 @@
 'use client';
 
-import { CheckIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { PARTIES } from '@/lib/parties';
 import { cn } from '@/lib/utils';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type PartySelectorProps = {
   selectedPartyIds: string[];
@@ -26,43 +25,39 @@ export function PartySelector({
   };
 
   return (
-    <div className={cn('flex flex-wrap gap-2', className)}>
-      {PARTIES.map((party) => {
-        const isSelected = selectedPartyIds.includes(party.id);
-
-        return (
-          <Button
-            className={cn(
-              'relative h-8 px-3 py-1 font-medium text-xs transition-all',
-              isSelected && 'pr-7'
-            )}
+    <div className={cn('flex flex-wrap items-center gap-3', className)}>
+      <ToggleGroup
+        type="multiple"
+        size="sm"
+        value={selectedPartyIds}
+        onValueChange={(vals) => onSelectionChange(vals as string[])}
+        className="flex flex-wrap gap-2"
+      >
+        {PARTIES.map((party) => (
+          <ToggleGroupItem
             key={party.id}
-            onClick={() => toggleParty(party.id)}
-            size="sm"
-            style={
-              isSelected
-                ? {
-                    backgroundColor: party.color,
-                    borderColor: party.color,
-                    color: 'white',
-                  }
-                : {
-                    borderColor: party.color,
-                    color: party.color,
-                  }
-            }
-            variant={isSelected ? 'default' : 'outline'}
+            value={party.id}
+            aria-label={party.name}
+            className={cn(
+              '!rounded-full first:!rounded-full last:!rounded-full overflow-hidden text-xs font-medium px-4 h-8 flex-none',
+              'border data-[state=on]:text-white',
+              // Override group item segmentation (remove merged look)
+              'first:!rounded-full last:!rounded-full',
+            )}
+            style={{
+              // Use party color only when active; rely on outline otherwise
+              ...(selectedPartyIds.includes(party.id)
+                ? { backgroundColor: party.color, borderColor: party.color }
+                : { color: party.color, borderColor: party.color }),
+            }}
+            data-state={selectedPartyIds.includes(party.id) ? 'on' : 'off'}
           >
             {party.shortName}
-            {isSelected && (
-              <CheckIcon className="-translate-y-1/2 absolute top-1/2 right-1.5 size-3" />
-            )}
-          </Button>
-        );
-      })}
-
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
       {selectedPartyIds.length > 0 && (
-        <Badge className="ml-2 h-8 px-2" variant="secondary">
+        <Badge className="h-8 rounded-full px-3 text-xs" variant="secondary">
           {selectedPartyIds.length} valgt
         </Badge>
       )}
