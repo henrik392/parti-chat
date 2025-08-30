@@ -70,33 +70,17 @@ const ChatBotDemo = () => {
     }
   }, [selectedPartyIds, activePartyId]);
 
-  const handleStreamResponse = useCallback(async (result: any) => {
+  const handleStreamResponse = useCallback(async (stream: any) => {
     let responseContent = '';
-    if (!result || typeof result[Symbol.asyncIterator] !== 'function') {
-      return responseContent;
-    }
-    const reader = result[Symbol.asyncIterator]();
 
     try {
-      // biome-ignore lint/correctness/useValidForDirection: Iterator pattern
-      while (true) {
-        const { done, value } = await reader.next();
-        if (done) {
-          break;
-        }
-
-        if (
-          value &&
-          typeof value === 'object' &&
-          'type' in value &&
-          value.type === 'text-delta' &&
-          'textDelta' in value
-        ) {
-          responseContent += value.textDelta;
+      for await (const chunk of stream) {
+        if (chunk.type === 'text-delta') {
+          responseContent += chunk.textDelta;
         }
       }
-    } catch {
-      // Silent stream error handling
+    } catch (error) {
+      console.error('Stream error:', error);
     }
 
     return responseContent;
@@ -214,7 +198,7 @@ const ChatBotDemo = () => {
             )}
 
             {/* Party Tabs for Mobile/Single View */}
-            {hasAnyMessages && selectedParties.length > 0 && activePartyId && (
+            {selectedParties.length > 0 && activePartyId && (
               <PartyTabs
                 activePartyId={activePartyId}
                 onTabChange={setActivePartyId}
