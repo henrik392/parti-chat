@@ -11,7 +11,6 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputToolbar,
-  PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { PartySelector } from '@/components/party-selector';
@@ -90,7 +89,7 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <div className="relative mx-auto size-full h-screen max-w-6xl p-2 sm:p-6">
+    <div className="relative mx-auto size-full h-screen max-w-5xl p-2 sm:p-6">
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
@@ -127,33 +126,24 @@ const ChatBotDemo = () => {
             selectedPartyIds={selectedPartyIds}
           />
 
-          <PromptInput onSubmit={handleSubmit}>
-            <PromptInputTextarea
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={(() => {
-                if (selectedPartyIds.length === 0) {
-                  return 'Velg partier først, så still ditt spørsmål...';
-                }
-                return 'Still spørsmål til alle valgte partier...';
-              })()}
-              value={input}
-            />
-            <PromptInputToolbar>
-              <PromptInputTools>
-                {selectedPartyIds.length === 0 && (
-                  <span className="text-muted-foreground text-sm">
-                    Velg minst ett parti for å fortsette
-                  </span>
-                )}
-                {selectedPartyIds.length > 0 && (
-                  <span className="text-muted-foreground text-sm">
-                    Sender til {selectedPartyIds.length} parti
-                    {selectedPartyIds.length !== 1 ? 'er' : ''}
-                  </span>
-                )}
-              </PromptInputTools>
-              <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
-            </PromptInputToolbar>
+          <PromptInput
+            onSubmit={handleSubmit}
+            className="flex items-center divide-y-0 px-3 py-2 border rounded-xl"
+          >
+            <div className="flex w-full items-end gap-2">
+              <PromptInputTextarea
+                onChange={(e) => setInput(e.target.value)}
+                placeholder={(() => {
+                  if (selectedPartyIds.length === 0) {
+                    return 'Velg partier først...';
+                  }
+                  return 'Still spørsmål';
+                })()}
+                value={input}
+                minHeight={8}
+              />
+                <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
+            </div>
           </PromptInput>
         </div>
       </div>

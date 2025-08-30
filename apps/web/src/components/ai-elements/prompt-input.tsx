@@ -7,7 +7,7 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
 } from 'react';
-import { Children } from 'react';
+import { Children, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -24,7 +24,7 @@ export type PromptInputProps = HTMLAttributes<HTMLFormElement>;
 export const PromptInput = ({ className, ...props }: PromptInputProps) => (
   <form
     className={cn(
-      'w-full divide-y overflow-hidden rounded-xl border bg-background shadow-sm',
+      'relative w-full divide-y overflow-visible rounded-xl border bg-background shadow-sm',
       className
     )}
     {...props}
@@ -32,16 +32,19 @@ export const PromptInput = ({ className, ...props }: PromptInputProps) => (
 );
 
 export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {
-  minHeight?: number;
-  maxHeight?: number;
+  minHeight?: number; // px
+  maxHeight?: number; // px
+  onMultilineChange?: (isMultiline: boolean) => void;
 };
 
 export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = 'What would you like to know?',
-  minHeight = 40,
-  maxHeight = 140,
+  minHeight = 8,
+  maxHeight = 120,
+  onMultilineChange,
+  value,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -65,15 +68,21 @@ export const PromptInputTextarea = ({
     }
   };
 
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+
   return (
     <Textarea
+      ref={ref}
       className={cn(
-        'w-full resize-none rounded-none border-none px-3 py-2 shadow-none outline-none ring-0 text-sm',
-        'field-sizing-content max-h-[5lh] bg-transparent dark:bg-transparent',
+        'w-full resize-none rounded-none border-none px-2 py-1 shadow-none outline-none ring-0 text-sm leading-snug',
+        'bg-transparent dark:bg-transparent',
         'focus-visible:ring-0',
+        // Align text center vertically
+        'flex items-center',
         className
       )}
       name="message"
+      value={value}
       onChange={(e) => {
         onChange?.(e);
       }}
@@ -91,7 +100,7 @@ export const PromptInputToolbar = ({
   ...props
 }: PromptInputToolbarProps) => (
   <div
-    className={cn('flex items-center justify-between px-2 py-1 gap-2', className)}
+    className={cn('flex items-center justify-end px-2 py-1 gap-2 min-h-0', className)}
     {...props}
   />
 );

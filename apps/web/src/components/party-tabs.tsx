@@ -36,7 +36,7 @@ export function PartyTabs({
   return (
     <div className={cn('flex h-full w-full flex-col', className)}>
       {/* Tab Navigation - Fixed */}
-      <div className="fixed top-2 sm:top-6 left-1/2 transform -translate-x-1/2 z-50 bg-background max-w-7xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)]">
+      <div className="fixed top-2 sm:top-6 left-1/2 transform -translate-x-1/2 z-50 bg-background max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)]">
         <Tabs
           className="flex flex-col"
           onValueChange={onTabChange}
