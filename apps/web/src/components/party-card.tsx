@@ -4,22 +4,6 @@ import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
-import {
-  InlineCitation,
-  InlineCitationCard,
-  InlineCitationCardBody,
-  InlineCitationCardTrigger,
-  InlineCitationCarousel,
-  InlineCitationCarouselContent,
-  InlineCitationCarouselHeader,
-  InlineCitationCarouselIndex,
-  InlineCitationCarouselItem,
-  InlineCitationCarouselNext,
-  InlineCitationCarouselPrev,
-  InlineCitationQuote,
-  InlineCitationSource,
-  InlineCitationText,
-} from '@/components/ai-elements/inline-citation';
 import { Loader } from '@/components/ai-elements/loader';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Response } from '@/components/ai-elements/response';
@@ -29,13 +13,6 @@ import { Button } from '@/components/ui/button';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 import { client } from '@/utils/orpc';
-
-type Citation = {
-  content: string;
-  chapterTitle?: string;
-  pageNumber?: number;
-  similarity: number;
-};
 
 type PartyCardProps = {
   party: Party;
@@ -116,34 +93,6 @@ export function PartyCard({
     }
   }, [hasMessages, party.id, onMessagesChange]);
 
-  // Extract citations from response text
-  const extractCitationsFromResponse = (text: string): Citation[] => {
-    const citations: Citation[] = [];
-    const citationPattern = /\[(\d+)\]/g;
-    const BASE_PAGE_NUMBER = 40;
-    const DEFAULT_SIMILARITY = 0.85;
-
-    const matches = text.match(citationPattern);
-    if (matches) {
-      for (const match of matches) {
-        const citationId = Number.parseInt(match.replace(/\[|\]/g, ''), 10);
-        citations.push({
-          content: `Utdrag fra ${party.name}s partiprogram som støtter dette svaret (sitering ${citationId}).`,
-          chapterTitle: `Kapittel ${citationId}`,
-          pageNumber: BASE_PAGE_NUMBER + citationId,
-          similarity: DEFAULT_SIMILARITY,
-        });
-      }
-    }
-
-    return citations;
-  };
-
-  const citations =
-    hasMessages && responseText && !responseText.includes('Ikke omtalt')
-      ? extractCitationsFromResponse(responseText)
-      : [];
-
   const copyToClipboard = async () => {
     if (responseText) {
       await navigator.clipboard.writeText(responseText);
@@ -151,59 +100,6 @@ export function PartyCard({
   };
 
   const isNotCovered = responseText.includes('Ikke omtalt i partiprogrammet');
-
-  // Helper function to render response with citations
-  const renderResponseWithCitations = (
-    text: string,
-    messageCitations: Citation[] = []
-  ) => {
-    if (!messageCitations.length) {
-      return <Response>{text}</Response>;
-    }
-
-    return (
-      <div>
-        <InlineCitation>
-          <InlineCitationText>
-            <Response>{text}</Response>
-          </InlineCitationText>
-          <InlineCitationCard>
-            <InlineCitationCardTrigger
-              sources={[
-                `https://${party.name.toLowerCase().replace(/\s+/g, '-')}.no/partiprogram`,
-              ]}
-            >
-              {messageCitations.length}
-            </InlineCitationCardTrigger>
-            <InlineCitationCardBody>
-              <InlineCitationCarousel>
-                <InlineCitationCarouselHeader>
-                  <InlineCitationCarouselPrev />
-                  <InlineCitationCarouselIndex />
-                  <InlineCitationCarouselNext />
-                </InlineCitationCarouselHeader>
-                <InlineCitationCarouselContent>
-                  {messageCitations.map((citation, citationIndex) => (
-                    <InlineCitationCarouselItem
-                      key={`${citation.chapterTitle}-${citation.pageNumber}-${citationIndex}`}
-                    >
-                      <InlineCitationSource
-                        title={citation.chapterTitle || 'Ukjent kapittel'}
-                        url={`https://${party.name.toLowerCase().replace(/\s+/g, '-')}.no/partiprogram${citation.pageNumber ? `#side-${citation.pageNumber}` : ''}`}
-                      />
-                      <InlineCitationQuote>
-                        {citation.content}
-                      </InlineCitationQuote>
-                    </InlineCitationCarouselItem>
-                  ))}
-                </InlineCitationCarouselContent>
-              </InlineCitationCarousel>
-            </InlineCitationCardBody>
-          </InlineCitationCard>
-        </InlineCitation>
-      </div>
-    );
-  };
 
   return (
     <div className={cn('w-full space-y-4', className)}>
@@ -289,15 +185,9 @@ export function PartyCard({
               <MessageContent>
                 {message.parts.map((part, partIndex) => {
                   if (part.type === 'text') {
-                    const shouldShowCitations =
-                      message.role === 'assistant' && citations.length > 0;
                     return (
                       <div key={`${message.id}-${partIndex}`}>
-                        {shouldShowCitations ? (
-                          renderResponseWithCitations(part.text, citations)
-                        ) : (
-                          <Response>{part.text}</Response>
-                        )}
+                        <Response>{part.text}</Response>
                       </div>
                     );
                   }
