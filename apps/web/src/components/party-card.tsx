@@ -103,43 +103,45 @@ export function PartyCard({
 
   return (
     <div className={cn('w-full space-y-4', className)}>
-      <div className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex size-10 items-center justify-center rounded-full font-semibold text-sm text-white"
-              style={{ backgroundColor: party.color }}
-            >
-              {party.shortName}
-            </div>
-            <div>
-              <h3 className="m-0 font-semibold text-lg leading-tight">
-                {party.name}
-              </h3>
-              <Badge
-                className="mt-1"
-                style={{
-                  borderColor: party.color,
-                  color: party.color,
-                }}
-                variant="secondary"
+      {hasMessages && (
+        <div className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="flex size-10 items-center justify-center rounded-full font-semibold text-sm text-white"
+                style={{ backgroundColor: party.color }}
               >
-                2025 Program
-              </Badge>
+                {party.shortName}
+              </div>
+              <div>
+                <h3 className="m-0 font-semibold text-lg leading-tight">
+                  {party.name}
+                </h3>
+                <Badge
+                  className="mt-1"
+                  style={{
+                    borderColor: party.color,
+                    color: party.color,
+                  }}
+                  variant="secondary"
+                >
+                  2025 Program
+                </Badge>
+              </div>
             </div>
+            {responseText && !isLoading && (
+              <Button
+                className="shrink-0"
+                onClick={copyToClipboard}
+                size="icon"
+                variant="ghost"
+              >
+                <CopyIcon className="size-4" />
+              </Button>
+            )}
           </div>
-          {responseText && !isLoading && (
-            <Button
-              className="shrink-0"
-              onClick={copyToClipboard}
-              size="icon"
-              variant="ghost"
-            >
-              <CopyIcon className="size-4" />
-            </Button>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Error State */}
       {error && (
