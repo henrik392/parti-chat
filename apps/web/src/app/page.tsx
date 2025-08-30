@@ -1,14 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { eventIteratorToStream } from '@orpc/client';
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ai-elements/conversation';
-import { Message, MessageContent } from '@/components/ai-elements/message';
 import {
   PromptInput,
   PromptInputSubmit,
@@ -16,11 +13,10 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from '@/components/ai-elements/prompt-input';
-import { Response } from '@/components/ai-elements/response';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { PartySelector } from '@/components/party-selector';
+import { PartyTabs } from '@/components/party-tabs';
 import { PARTIES, type Party } from '@/lib/parties';
-import { client } from '@/utils/orpc';
 
 const suggestions = [
   'Hva er partiets syn på klimapolitikk?',
@@ -34,26 +30,7 @@ const ChatBotDemo = () => {
   const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
   const [selectedParties, setSelectedParties] = useState<Party[]>([]);
   const [activePartyId, setActivePartyId] = useState<string>('');
-
-  // Use the useChat hook with oRPC transport
-  const { messages, sendMessage, status } = useChat({
-    transport: {
-      async sendMessages(options) {
-        return eventIteratorToStream(
-          await client.chat(
-            {
-              messages: options.messages,
-              partyId: activePartyId || undefined,
-            },
-            { signal: options.abortSignal }
-          )
-        );
-      },
-      reconnectToStream() {
-        throw new Error('Unsupported');
-      },
-    },
-  });
+  const [messageTrigger, setMessageTrigger] = useState<{ message: string; timestamp: number } | null>(null);
 
   // Update selected parties when IDs change
   useEffect(() => {
@@ -75,19 +52,27 @@ const ChatBotDemo = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && activePartyId) {
-      sendMessage({ text: input });
+    if (input.trim() && selectedParties.length > 0) {
+      // Broadcast message to all selected parties by updating the trigger
+      setMessageTrigger({
+        message: input.trim(),
+        timestamp: Date.now(),
+      });
       setInput('');
     }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    if (activePartyId) {
-      sendMessage({ text: suggestion });
+    if (selectedParties.length > 0) {
+      // Broadcast suggestion to all selected parties
+      setMessageTrigger({
+        message: suggestion,
+        timestamp: Date.now(),
+      });
     }
   };
 
-  const hasMessages = messages.length > 0;
+  const hasSelectedParties = selectedParties.length > 0;
 
   return (
     <div className="relative mx-auto size-full h-screen max-w-7xl p-6">
@@ -95,7 +80,7 @@ const ChatBotDemo = () => {
         <Conversation className="h-full">
           <ConversationContent>
             {/* Empty State */}
-            {!hasMessages && (
+            {!hasSelectedParties && (
               <div className="flex h-full flex-col items-center justify-center gap-6">
                 <div className="text-center">
                   <h2 className="mb-2 font-semibold text-2xl">
@@ -105,15 +90,27 @@ const ChatBotDemo = () => {
                     Velg partier og still spørsmål for å få svar fra
                     partiprogram
                   </p>
-
-                  {selectedParties.length === 0 && (
-                    <p className="mb-4 text-muted-foreground text-sm">
-                      Velg minst ett parti for å komme i gang
-                    </p>
-                  )}
+                  <p className="mb-4 text-muted-foreground text-sm">
+                    Velg minst ett parti for å komme i gang
+                  </p>
                 </div>
+              </div>
+            )}
 
-                {selectedParties.length > 0 && (
+            {/* Suggestion State - when parties selected but no conversations yet */}
+            {hasSelectedParties && (
+              <div className="flex h-full flex-col">
+                {/* Show suggestions at the top when no active conversations */}
+                <div className="mb-6 flex flex-col items-center justify-center gap-6">
+                  <div className="text-center">
+                    <h2 className="mb-2 font-semibold text-2xl">
+                      Political Party Chat
+                    </h2>
+                    <p className="mb-6 text-muted-foreground">
+                      Still spørsmål til de valgte partiene for å sammenligne deres standpunkter
+                    </p>
+                  </div>
+
                   <Suggestions className="max-w-2xl">
                     {suggestions.map((suggestion) => (
                       <Suggestion
@@ -123,27 +120,19 @@ const ChatBotDemo = () => {
                       />
                     ))}
                   </Suggestions>
-                )}
+                </div>
+
+                {/* Party Tabs for conversations */}
+                <div className="flex-1">
+                  <PartyTabs
+                    activePartyId={activePartyId}
+                    messageTrigger={messageTrigger}
+                    onTabChange={setActivePartyId}
+                    parties={selectedParties}
+                  />
+                </div>
               </div>
             )}
-
-            {/* Messages */}
-            {messages.map((message) => (
-              <Message from={message.role} key={message.id}>
-                <MessageContent>
-                  {message.parts.map((part, partIndex) => {
-                    if (part.type === 'text') {
-                      return (
-                        <Response key={`${message.id}-${partIndex}`}>
-                          {part.text}
-                        </Response>
-                      );
-                    }
-                    return null;
-                  })}
-                </MessageContent>
-              </Message>
-            ))}
           </ConversationContent>
           <ConversationScrollButton />
         </Conversation>
@@ -162,13 +151,7 @@ const ChatBotDemo = () => {
                 if (selectedPartyIds.length === 0) {
                   return 'Velg partier først, så still ditt spørsmål...';
                 }
-                if (activePartyId) {
-                  const activeParty = selectedParties.find(
-                    (p) => p.id === activePartyId
-                  );
-                  return `Still spørsmål til ${activeParty?.shortName}...`;
-                }
-                return 'Still ditt spørsmål...';
+                return 'Still spørsmål til alle valgte partier...';
               })()}
               value={input}
             />
@@ -179,19 +162,14 @@ const ChatBotDemo = () => {
                     Velg minst ett parti for å fortsette
                   </span>
                 )}
-                {selectedPartyIds.length > 0 && activePartyId && (
+                {selectedPartyIds.length > 0 && (
                   <span className="text-muted-foreground text-sm">
-                    Chatter med{' '}
-                    {
-                      selectedParties.find((p) => p.id === activePartyId)
-                        ?.shortName
-                    }
+                    Sender til {selectedPartyIds.length} parti{selectedPartyIds.length !== 1 ? 'er' : ''}
                   </span>
                 )}
               </PromptInputTools>
               <PromptInputSubmit
-                disabled={!(input && activePartyId)}
-                status={status === 'streaming' ? 'streaming' : undefined}
+                disabled={!(input && hasSelectedParties)}
               />
             </PromptInputToolbar>
           </PromptInput>

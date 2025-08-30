@@ -1,14 +1,13 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { RouterClient } from '@orpc/server';
 import { streamToEventIterator } from '@orpc/server';
-import { convertToModelMessages, streamText } from 'ai';
+import { convertToModelMessages, stepCountIs, streamText, tool } from 'ai';
 import { z } from 'zod';
 import {
   findRelevantContent,
   type RetrievalResult,
 } from '../lib/embedding-generator';
 import { publicProcedure } from '../lib/orpc';
-import { generateSystemPrompt } from '../lib/system-prompt';
 
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
@@ -89,91 +88,83 @@ export const appRouter = {
     return 'OK';
   }),
 
-  chat: publicProcedure.input(chatInputSchema).handler(async ({ input }) => {
+  chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
     const { messages, partyId } = input;
 
-    // If no party ID is provided, use the generic chat
-    if (!partyId) {
-      const result = streamText({
-        model: openrouter('openai/gpt-5-chat'),
-        messages: convertToModelMessages(messages),
-        system: 'You are a helpful assistant.',
-      });
-      return streamToEventIterator(result.toUIMessageStream());
+    console.log('[Server] Chat request received:', {
+      partyId,
+      messagesCount: messages.length,
+    });
+
+    // Find the party information if partyId is provided
+    let party = null;
+    if (partyId) {
+      party = PARTIES.find((p) => p.id === partyId);
+      if (!party) {
+        console.error('[Server] Party not found!', { partyId });
+        throw new Error(`Party not found: ${partyId}`);
+      }
+      console.log('[Server] Found party:', { id: party.id, name: party.name });
     }
 
-    // Find the party information
-    const party = PARTIES.find((p) => p.id === partyId);
-    if (!party) {
-      throw new Error(`Party not found: ${partyId}`);
-    }
+    const result = streamText({
+      model: openrouter('openai/gpt-4o-mini'),
+      messages: convertToModelMessages(messages),
+      stopWhen: stepCountIs(5),
+      system: party
+        ? `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
+           Bruk verktøyet for å søke etter relevant informasjon i partiprogrammet før du svarer.
+           Svar kun basert på informasjon fra partiprogrammet.
+           Hvis ingen relevant informasjon finnes, svar "Ikke omtalt i ${party.name}s partiprogram."`
+        : 'Du er en nyttig assistent som kan svare på generelle spørsmål.',
+      tools: {
+        getPartyInformation: tool({
+          description: `Hent informasjon fra ${party?.name || 'parti'}programmet for å svare på spørsmål`,
+          inputSchema: z.object({
+            question: z.string().describe('Brukerens spørsmål'),
+            partyId: z
+              .string()
+              .optional()
+              .describe('Party ID for å søke i spesifikt partiprogram'),
+          }),
+          execute: async ({ question, partyId: toolPartyId }) => {
+            console.log('[Tool] Getting party information:', {
+              question,
+              partyId: toolPartyId || partyId,
+            });
 
-    // Get the user's question from the last message
-    const lastMessage = messages.at(-1);
-    const userQuestion =
-      typeof lastMessage?.content === 'string'
-        ? lastMessage.content
-        : lastMessage?.content[0]?.text || '';
+            try {
+              const relevantContent = await findRelevantContent(
+                question,
+                toolPartyId || partyId || '',
+                DEFAULT_CONTENT_LIMIT,
+                DEFAULT_SIMILARITY_THRESHOLD
+              );
 
-    if (!userQuestion) {
-      throw new Error('No question provided');
-    }
+              console.log(
+                `[Tool] Found ${relevantContent.length} relevant content pieces`
+              );
 
-    // The partyId we're looking for should match a party.id
-    // Let's use that party ID directly in the RAG search
-    const relevantContent = await findRelevantContent(
-      userQuestion,
-      partyId, // This should be the party.id like 'mdg'
-      DEFAULT_CONTENT_LIMIT,
-      DEFAULT_SIMILARITY_THRESHOLD
-    );
+              if (relevantContent.length === 0) {
+                return `Ingen relevant informasjon funnet i ${party?.name || 'parti'}programmet.`;
+              }
 
-    // Build context from retrieved content
-    let ragContext = '';
-    let ragCitations = '';
+              return relevantContent
+                .map(
+                  (content: RetrievalResult) =>
+                    `Fra ${party?.name || 'parti'}programmet${content.chapterTitle ? ` (${content.chapterTitle})` : ''}: ${content.content}`
+                )
+                .join('\n\n');
+            } catch (error) {
+              console.error('[Tool] Error getting party information:', error);
+              return `Feil ved henting av informasjon fra ${party?.name || 'parti'}programmet.`;
+            }
+          },
+        }),
+      },
+    });
 
-    if (relevantContent.length === 0) {
-      ragContext = `Ingen relevant informasjon funnet i ${party.name}s partiprogram.`;
-    } else {
-      ragContext = relevantContent
-        .map(
-          (contentResult: RetrievalResult) =>
-            `Fra ${party.name}s partiprogram${contentResult.chapterTitle ? ` (${contentResult.chapterTitle})` : ''}: ${contentResult.content}`
-        )
-        .join('\n\n');
-
-      ragCitations = relevantContent
-        .map(
-          (citationResult: RetrievalResult, citationIndex: number) =>
-            `[${citationIndex + 1}] ${citationResult.chapterTitle || 'Ukjent kapittel'}${citationResult.pageNumber ? `, side ${citationResult.pageNumber}` : ''}`
-        )
-        .join('\n');
-    }
-
-    // Create system message with party-specific context
-    const systemMessage = generateSystemPrompt(
-      party.name,
-      ragContext,
-      ragCitations
-    );
-
-    try {
-      console.log('Generating response from model');
-
-      const result = streamText({
-        model: openrouter('openai/gpt-5-chat'),
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user', content: userQuestion },
-        ],
-        temperature: 0.1, // Low temperature for factual responses
-      });
-
-      return streamToEventIterator(result.toUIMessageStream());
-    } catch (error) {
-      console.error('Failed to generate stream:', error);
-      throw error;
-    }
+    return streamToEventIterator(result.toUIMessageStream());
   }),
 };
 export type AppRouter = typeof appRouter;

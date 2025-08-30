@@ -1,7 +1,9 @@
 'use client';
 
+import { useChat } from '@ai-sdk/react';
+import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon, ExternalLinkIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader } from '@/components/ai-elements/loader';
 import { Response } from '@/components/ai-elements/response';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +16,7 @@ import {
 } from '@/components/ui/collapsible';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
+import { client } from '@/utils/orpc';
 
 type Citation = {
   content: string;
@@ -22,32 +25,61 @@ type Citation = {
   similarity: number;
 };
 
-type MessagePart = {
-  type: 'text';
-  text: string;
-};
-
-type Message = {
-  role: 'assistant' | 'user';
-  parts?: MessagePart[];
-};
-
 type PartyCardProps = {
   party: Party;
-  messages: Message[];
-  isLoading: boolean;
-  error: string | null;
+  messageTrigger?: { message: string; timestamp: number } | null;
   className?: string;
 };
 
 export function PartyCard({
   party,
-  messages,
-  isLoading,
-  error,
+  messageTrigger,
   className,
 }: PartyCardProps) {
   const [showCitations, setShowCitations] = useState(false);
+
+  // Use the useChat hook with oRPC transport for this specific party
+  const { messages, sendMessage, status, error } = useChat({
+    transport: {
+      async sendMessages(options) {
+        console.log(`[PartyCard Transport] Calling client.chat for ${party.shortName}:`, {
+          partyId: party.id,
+          messagesCount: options.messages.length,
+          messages: options.messages
+        });
+        
+        try {
+          const result = await client.chat(
+            {
+              messages: options.messages,
+              partyId: party.id,
+            },
+            { signal: options.abortSignal }
+          );
+          
+          console.log(`[PartyCard Transport] Got result from server for ${party.shortName}`);
+          return eventIteratorToStream(result);
+        } catch (error) {
+          console.error(`[PartyCard Transport] Error for ${party.shortName}:`, error);
+          throw error;
+        }
+      },
+      reconnectToStream() {
+        throw new Error('Unsupported');
+      },
+    },
+  });
+
+  // Listen for message triggers from parent
+  useEffect(() => {
+    if (messageTrigger?.message) {
+      console.log(`[PartyCard] Sending message to party: ${party.id} (${party.shortName})`, {
+        message: messageTrigger.message,
+        partyId: party.id
+      });
+      sendMessage({ text: messageTrigger.message });
+    }
+  }, [messageTrigger, sendMessage, party.id, party.shortName]);
 
   // Get the latest assistant message
   const latestResponse = messages
@@ -59,6 +91,12 @@ export function PartyCard({
       ?.filter((part) => part.type === 'text')
       ?.map((part) => part.text)
       ?.join('') || '';
+
+  // Check if we're currently streaming
+  const isLoading = status === 'streaming';
+
+  // Check if there are any messages in this conversation
+  const hasMessages = messages.length > 0;
 
   // Extract citations from response (this would need to be implemented based on your citation format)
   const citations: Citation[] = []; // TODO: Extract from response or get from API
@@ -115,7 +153,23 @@ export function PartyCard({
         {/* Error State */}
         {error && (
           <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
-            Feil ved henting av svar: {error}
+            Feil ved henting av svar: {error.message || 'Ukjent feil'}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!(hasMessages || isLoading || error) && (
+          <div className="py-8 text-center">
+            <div
+              className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full font-bold text-white text-xl"
+              style={{ backgroundColor: party.color }}
+            >
+              {party.shortName}
+            </div>
+            <h3 className="mb-2 font-medium text-lg">{party.name}</h3>
+            <p className="text-muted-foreground text-sm">
+              Still et spørsmål for å få svar fra {party.name}s partiprogram
+            </p>
           </div>
         )}
 
