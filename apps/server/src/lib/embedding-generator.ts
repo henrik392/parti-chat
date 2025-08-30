@@ -106,7 +106,10 @@ export async function findRelevantContent(
       .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
       .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
       .where(
-        and(gt(similarity, minSimilarity), eq(parties.shortName, partyShortName))
+        and(
+          gt(similarity, minSimilarity),
+          sql`lower(${parties.shortName}) = lower(${partyShortName})`
+        )
       )
       .orderBy(desc(similarity))
       .limit(limit);
