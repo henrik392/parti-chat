@@ -22,5 +22,12 @@
       "!**/index.css"
     ]
   },
-  "extends": ["ultracite"]
+  "extends": ["ultracite"],
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noConsole": "error"
+      }
+    }
+  }
 }

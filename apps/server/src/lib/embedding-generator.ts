@@ -2,7 +2,7 @@ import { openai } from '@ai-sdk/openai';
 import { embed, embedMany } from 'ai';
 import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { embeddings, parties, partyPrograms } from '../db/schema';
+import { embeddings, partyPrograms } from '../db/schema';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
 
@@ -14,11 +14,8 @@ export type EmbeddingResult = {
 export type RetrievalResult = {
   content: string;
   similarity: number;
-  partyName: string;
-  partyShortName: string;
   chapterTitle?: string;
   pageNumber?: number;
-  partyColor: string;
 };
 
 /**
@@ -64,61 +61,42 @@ export async function generateSingleEmbedding(text: string): Promise<number[]> {
 }
 
 /**
- * Find relevant content for a query from specific parties
+ * Find relevant content for a query from a specific party
  */
-export async function findRelevantContentByParties(
+export async function findRelevantContent(
   query: string,
-  partyIds: string[],
+  partyId: string,
   limit = 5,
-  minSimilarity = 0.7
+  minSimilarity = 0.3
 ): Promise<RetrievalResult[]> {
   try {
     const queryEmbedding = await generateSingleEmbedding(query);
-
-    const embeddingCount = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(embeddings);
-
-    if (!embeddingCount[0]?.count || embeddingCount[0].count === 0) {
-      return [];
-    }
-
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
     const results = await db
       .select({
         content: embeddings.content,
         similarity,
-        partyName: parties.name,
-        partyShortName: parties.shortName,
         chapterTitle: embeddings.chapterTitle,
         pageNumber: embeddings.pageNumber,
-        partyColor: parties.color,
-        partyId: parties.id,
       })
       .from(embeddings)
       .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
-      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
       .where(
-        and(
-          gt(similarity, minSimilarity),
-          sql`${parties.id} = ANY(${partyIds})`
-        )
+        and(gt(similarity, minSimilarity), eq(partyPrograms.partyId, partyId))
       )
       .orderBy(desc(similarity))
       .limit(limit);
 
+    console.log('RAG results:', results);
+
     return results.map((result) => ({
       content: result.content,
       similarity: result.similarity,
-      partyName: result.partyName,
-      partyShortName: result.partyShortName,
       chapterTitle: result.chapterTitle || undefined,
       pageNumber: result.pageNumber || undefined,
-      partyColor: result.partyColor,
     }));
-  } catch (error) {
-    const _msg = error instanceof Error ? error.message : String(error);
+  } catch {
     throw new Error('RAG search failed');
   }
 }

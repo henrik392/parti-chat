@@ -3,10 +3,15 @@ import type { RouterClient } from '@orpc/server';
 import { streamToEventIterator } from '@orpc/server';
 import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
-import { findRelevantContentByParties } from '../lib/embedding-generator';
-import { protectedProcedure, publicProcedure } from '../lib/orpc';
-import { generateComparisonSummary } from '../lib/rag-service';
+import {
+  findRelevantContent,
+  type RetrievalResult,
+} from '../lib/embedding-generator';
+import { publicProcedure } from '../lib/orpc';
 import { generateSystemPrompt } from '../lib/system-prompt';
+import { db } from '../db';
+import { parties, partyPrograms } from '../db/schema';
+import { eq } from 'drizzle-orm';
 
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
@@ -20,37 +25,32 @@ const chatInputSchema = z.object({
     .describe('Specific party ID for party-based responses'),
 });
 
-const comparisonInputSchema = z.object({
-  question: z.string().min(1, 'Question is required'),
-  partyAnswers: z.array(z.any()).describe('Party answers to compare'),
-});
-
-// Hardcoded party data based on PDFs in party-program folder
+// Party data with actual database party IDs (UUIDs)
 const PARTIES = [
-  { id: 'ap', name: 'Arbeiderpartiet', shortName: 'AP', color: '#E5001A' },
-  { id: 'frp', name: 'Fremskrittspartiet', shortName: 'FrP', color: '#003C7F' },
-  { id: 'h', name: 'Høyre', shortName: 'H', color: '#0065F1' },
+  { id: '96bab927-4bc8-41d4-a82f-986f02245a65', name: 'Arbeiderpartiet', shortName: 'AP', color: '#E5001A' },
+  { id: 'c5da6b28-f27b-4b80-81fe-2476733c04d9', name: 'Fremskrittspartiet', shortName: 'FrP', color: '#003C7F' },
+  { id: '8b13ec72-4b8c-4544-814a-d9d5fe263713', name: 'Høyre', shortName: 'H', color: '#0065F1' },
   {
-    id: 'krf',
+    id: '839b43bd-0d67-4126-acfc-c7537a79d390',
     name: 'Kristelig Folkeparti',
     shortName: 'KrF',
     color: '#F9C835',
   },
   {
-    id: 'mdg',
+    id: '1d09e1ee-c3b4-4777-aafb-d2eb5bb2a830',
     name: 'Miljøpartiet De Grønne',
     shortName: 'MDG',
     color: '#4B9F44',
   },
-  { id: 'rodt', name: 'Rødt', shortName: 'Rødt', color: '#D50000' },
-  { id: 'sp', name: 'Senterpartiet', shortName: 'SP', color: '#00843D' },
+  { id: '48f4b362-91ef-44fe-8787-06b7cd06a480', name: 'Rødt', shortName: 'Rødt', color: '#D50000' },
+  { id: 'a1ea74a7-bac3-40ba-a748-199bce9f8a79', name: 'Senterpartiet', shortName: 'SP', color: '#00843D' },
   {
-    id: 'sv',
+    id: 'eff941a7-e564-4be1-8f03-0c59d1a140f1',
     name: 'Sosialistisk Venstreparti',
     shortName: 'SV',
     color: '#C4002C',
   },
-  { id: 'v', name: 'Venstre', shortName: 'V', color: '#006B38' },
+  { id: 'e20772a9-5612-418c-95d1-2be5a04fdf34', name: 'Venstre', shortName: 'V', color: '#006B38' },
 ] as const;
 
 const openrouter = createOpenRouter({
@@ -60,26 +60,6 @@ const openrouter = createOpenRouter({
 export const appRouter = {
   healthCheck: publicProcedure.handler(() => {
     return 'OK';
-  }),
-
-  // Get available parties for selection
-  getParties: publicProcedure.handler(() => {
-    return PARTIES;
-  }),
-
-  // Generate comparison summary
-  compareParties: publicProcedure
-    .input(comparisonInputSchema)
-    .handler(({ input }) => {
-      const { question, partyAnswers } = input;
-      return generateComparisonSummary(question, partyAnswers);
-    }),
-
-  privateData: protectedProcedure.handler(({ context }) => {
-    return {
-      message: 'This is private',
-      user: context.session?.user,
-    };
   }),
 
   chat: publicProcedure.input(chatInputSchema).handler(async ({ input }) => {
@@ -92,7 +72,7 @@ export const appRouter = {
         messages: convertToModelMessages(messages),
         system: 'You are a helpful assistant.',
       });
-      return streamToEventIterator(result.toUIMessageStream());
+      return result.toUIMessageStreamResponse();
     }
 
     // Find the party information
@@ -112,10 +92,15 @@ export const appRouter = {
       throw new Error('No question provided');
     }
 
-    // Get relevant content for this party using RAG
-    const relevantContent = await findRelevantContentByParties(
+    // Debug: Let's see what parties are actually in the database
+    const allParties = await db.select().from(parties).limit(5);
+    console.log('All parties in DB:', allParties);
+
+    // The partyId we're looking for should match a party.id
+    // Let's use that party ID directly in the RAG search
+    const relevantContent = await findRelevantContent(
       userQuestion,
-      [partyId],
+      partyId, // This should be the party.id like 'mdg' 
       DEFAULT_CONTENT_LIMIT,
       DEFAULT_SIMILARITY_THRESHOLD
     );
@@ -129,14 +114,14 @@ export const appRouter = {
     } else {
       ragContext = relevantContent
         .map(
-          (contentResult) =>
+          (contentResult: RetrievalResult) =>
             `Fra ${party.name}s partiprogram${contentResult.chapterTitle ? ` (${contentResult.chapterTitle})` : ''}: ${contentResult.content}`
         )
         .join('\n\n');
 
       ragCitations = relevantContent
         .map(
-          (citationResult, citationIndex) =>
+          (citationResult: RetrievalResult, citationIndex: number) =>
             `[${citationIndex + 1}] ${citationResult.chapterTitle || 'Ukjent kapittel'}${citationResult.pageNumber ? `, side ${citationResult.pageNumber}` : ''}`
         )
         .join('\n');
@@ -149,21 +134,39 @@ export const appRouter = {
       ragCitations
     );
 
-    const result = streamText({
-      model: openrouter('openai/gpt-5-mini'),
-      messages: [
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userQuestion },
-      ],
-      temperature: 0.1, // Low temperature for factual responses
-      providerOptions: {
-        openai: {
-          reasoning_effort: 'low',
-        },
-      },
+    console.log('Processing chat request:', {
+      party: party.name,
+      partyIdUsed: partyId,
+      ragContextLength: ragContext.length,
+      ragContext: `${ragContext.substring(0, 200)}...`,
+      userQuestion,
+      relevantContentCount: relevantContent.length,
     });
 
-    return streamToEventIterator(result.toUIMessageStream());
+    try {
+      // Temporarily return a simple response to test the flow
+      if (relevantContent.length === 0) {
+        return new Response(
+          `Ingen relevant informasjon funnet i ${party.name}s partiprogram.`
+        );
+      }
+
+      console.log('Generating response from model');
+
+      const result = streamText({
+        model: openrouter('openai/gpt-4o-mini'),
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userQuestion },
+        ],
+        temperature: 0.1, // Low temperature for factual responses
+      });
+
+      return result.toUIMessageStreamResponse();
+    } catch (error) {
+      console.error('Failed to generate stream:', error);
+      throw error;
+    }
   }),
 };
 export type AppRouter = typeof appRouter;
