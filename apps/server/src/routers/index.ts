@@ -122,21 +122,17 @@ export const appRouter = {
           description: `Hent informasjon fra ${party?.name || 'parti'}programmet for å svare på spørsmål`,
           inputSchema: z.object({
             question: z.string().describe('Brukerens spørsmål'),
-            partyId: z
-              .string()
-              .optional()
-              .describe('Party ID for å søke i spesifikt partiprogram'),
           }),
-          execute: async ({ question, partyId: toolPartyId }) => {
+          execute: async ({ question }) => {
             console.log('[Tool] Getting party information:', {
               question,
-              partyId: toolPartyId || partyId,
+              partyId,
             });
 
             try {
               const relevantContent = await findRelevantContent(
                 question,
-                toolPartyId || partyId || '',
+                partyId || '',
                 DEFAULT_CONTENT_LIMIT,
                 DEFAULT_SIMILARITY_THRESHOLD
               );

@@ -70,8 +70,33 @@ export async function findRelevantContent(
   minSimilarity = 0.3
 ): Promise<RetrievalResult[]> {
   try {
+    console.log('[RAG] Starting search with:', { query: query.substring(0, 50) + '...', partyId, limit, minSimilarity });
+    
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
+
+    // First, let's see what party programs exist in the database
+    const allPartyPrograms = await db
+      .select({
+        id: partyPrograms.id,
+        partyId: partyPrograms.partyId,
+        title: partyPrograms.title,
+      })
+      .from(partyPrograms);
+    
+    console.log('[RAG] Available party programs:', allPartyPrograms);
+    
+    // Check if the specific party program exists
+    const specificPartyProgram = await db
+      .select({
+        id: partyPrograms.id,
+        partyId: partyPrograms.partyId,
+        title: partyPrograms.title,
+      })
+      .from(partyPrograms)
+      .where(eq(partyPrograms.partyId, partyId));
+    
+    console.log('[RAG] Specific party program search result:', specificPartyProgram);
 
     const results = await db
       .select({
@@ -79,6 +104,8 @@ export async function findRelevantContent(
         similarity,
         chapterTitle: embeddings.chapterTitle,
         pageNumber: embeddings.pageNumber,
+        partyProgramId: embeddings.partyProgramId,
+        programPartyId: partyPrograms.partyId,
       })
       .from(embeddings)
       .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
@@ -88,7 +115,40 @@ export async function findRelevantContent(
       .orderBy(desc(similarity))
       .limit(limit);
 
-    console.log('RAG results:', results);
+    console.log('[RAG] Query results with partyId filter:', {
+      resultsCount: results.length,
+      partyId,
+      sampleResults: results.slice(0, 2).map(r => ({
+        similarity: r.similarity,
+        programPartyId: r.programPartyId,
+        content: r.content.substring(0, 100) + '...'
+      }))
+    });
+
+    // Let's also try without the partyId filter to see what we get
+    const resultsWithoutPartyFilter = await db
+      .select({
+        content: embeddings.content,
+        similarity,
+        chapterTitle: embeddings.chapterTitle,
+        pageNumber: embeddings.pageNumber,
+        partyProgramId: embeddings.partyProgramId,
+        programPartyId: partyPrograms.partyId,
+      })
+      .from(embeddings)
+      .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
+      .where(gt(similarity, minSimilarity))
+      .orderBy(desc(similarity))
+      .limit(limit);
+
+    console.log('[RAG] Query results WITHOUT partyId filter:', {
+      resultsCount: resultsWithoutPartyFilter.length,
+      sampleResults: resultsWithoutPartyFilter.slice(0, 2).map(r => ({
+        similarity: r.similarity,
+        programPartyId: r.programPartyId,
+        content: r.content.substring(0, 100) + '...'
+      }))
+    });
 
     return results.map((result) => ({
       content: result.content,
@@ -96,7 +156,8 @@ export async function findRelevantContent(
       chapterTitle: result.chapterTitle || undefined,
       pageNumber: result.pageNumber || undefined,
     }));
-  } catch {
+  } catch (error) {
+    console.error('[RAG] Error in findRelevantContent:', error);
     throw new Error('RAG search failed');
   }
 }
