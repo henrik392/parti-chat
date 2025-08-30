@@ -1,0 +1,17 @@
+# Nixpacks configuration for parti-chat
+[variables]
+NIXPACKS_BUILD_SYSTEM = "bun"
+
+[phases.setup]
+nixPkgs = ["bun", "nodejs-18_x", "python3", "postgresql"]
+
+[phases.install]
+cmds = ["bun install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+    "bun run build"
+]
+
+[start]
+cmd = "bun run start"
