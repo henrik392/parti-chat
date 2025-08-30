@@ -13,6 +13,7 @@ import {
 } from '@/components/ai-elements/prompt-input';
 import { PartySelector } from '@/components/party-selector';
 import { PartyTabs } from '@/components/party-tabs';
+import { EmptyChatState } from '@/components/empty-chat-state';
 import { PARTIES, type Party } from '@/lib/parties';
 
 const suggestions = [
@@ -94,13 +95,7 @@ const ChatBotDemo = () => {
         <Conversation className="h-full">
           <ConversationContent>
             {/* Empty State */}
-            {!hasSelectedParties && (
-              <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
-                <h2 className="mb-2 font-semibold text-2xl">
-                  Velg minst ett parti for å komme i gang
-                </h2>
-              </div>
-            )}
+            {!hasSelectedParties && <EmptyChatState />}
 
             {/* Party Tabs for conversations */}
             {hasSelectedParties && (
