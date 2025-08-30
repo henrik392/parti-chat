@@ -1,70 +1,96 @@
-# parti-chat
+# Parti-Chat
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines Next.js, Next, ORPC, and more.
+A multi-party political Q&A chat application that provides neutral, side-by-side answers from Norwegian political parties based on their official party programs.
 
-## Features
+## Overview
 
-- **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **shadcn/ui** - Reusable UI components
-- **Next.js** - Full-stack React framework
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Email & password authentication with Better Auth
-- **Husky** - Git hooks for code quality
-- **Turborepo** - Optimized monorepo build system
+Parti-Chat allows users to:
+- **Select multiple parties** and ask policy questions
+- **Get grounded answers** based strictly on party programs (PDFs) 
+- **Compare positions** with transparent citations and page references
+- **View source material** with direct links to PDF pages
+- **Save conversation history** locally or with optional account sync
 
-## Getting Started
+All responses are in Norwegian Bokmål and strictly grounded in official party program documents.
 
-First, install the dependencies:
+## 🚨 Development Note
 
-```bash
-bun install
-```
-## Database Setup
+**The latest commit contains a temporary `as any` type cast fix in `apps/web/src/utils/orpc.ts`. This should be properly fixed by implementing correct ORPC client types or using a shared types package before production deployment.**
 
-This project uses PostgreSQL with Drizzle ORM.
+## Tech Stack
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
+- **Frontend**: Next.js 15, React 19, TailwindCSS, shadcn/ui
+- **Backend**: Next.js API, oRPC for type-safe APIs
+- **Database**: PostgreSQL with pgvector, Drizzle ORM
+- **AI**: OpenRouter (GPT-4o-mini) for RAG-based responses
+- **Runtime**: Bun
+- **Monorepo**: Turborepo
 
-3. Apply the schema to your database:
-```bash
-bun db:push
-```
+## Quick Start
 
+1. **Install dependencies**:
+   ```bash
+   bun install
+   ```
 
-Then, run the development server:
+2. **Set up PostgreSQL database** and update environment variables:
+   ```bash
+   # apps/server/.env
+   DATABASE_URL=postgresql://...
+   OPEN_ROUTER_API_KEY=your-key
+   BETTER_AUTH_SECRET=your-secret
+   ```
 
-```bash
-bun dev
-```
+3. **Apply database schema**:
+   ```bash
+   bun run db:push
+   ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+4. **Ingest party programs** (place PDFs in `/party-program/`):
+   ```bash
+   bun run ingest:parties
+   ```
 
+5. **Start development servers**:
+   ```bash
+   bun dev
+   ```
 
-
-
+   - Web app: http://localhost:3000
+   - API server: http://localhost:3001
 
 ## Project Structure
 
 ```
 parti-chat/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   └── server/      # Backend API (Next, ORPC)
+│   ├── web/          # Frontend (Next.js)
+│   └── server/       # Backend API (oRPC + RAG)
+├── party-program/    # PDF storage for party programs
+└── docker-compose.yml # Local development setup
 ```
+
+## Key Features
+
+- **RAG-powered answers** with pgvector similarity search
+- **Citation tracking** with page numbers and chapter references
+- **Streaming responses** for real-time answer generation  
+- **Multi-party comparison** summaries on demand
+- **PDF text extraction** with chunking for optimal retrieval
+- **Conversation persistence** with optional authentication
 
 ## Available Scripts
 
-- `bun dev`: Start all applications in development mode
-- `bun build`: Build all applications
-- `bun dev:web`: Start only the web application
-- `bun dev:server`: Start only the server
-- `bun check-types`: Check TypeScript types across all apps
-- `bun db:push`: Push schema changes to database
-- `bun db:studio`: Open database studio UI
+- `bun dev` - Start all apps in development
+- `bun build` - Build for production
+- `bun run db:push` - Apply database changes
+- `bun run db:studio` - Open database GUI
+- `bun run ingest:parties` - Process party program PDFs
+
+## Deployment
+
+The app is designed for deployment on platforms like Dokploy, Railway, or Vercel with separate services for frontend, backend, and PostgreSQL database.
+
+## Contributing
+
+Built with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack). See [PRD.md](./PRD.md) for detailed product requirements and specifications.
