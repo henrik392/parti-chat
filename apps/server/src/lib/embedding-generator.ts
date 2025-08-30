@@ -2,7 +2,7 @@ import { openai } from '@ai-sdk/openai';
 import { embed, embedMany } from 'ai';
 import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { embeddings, partyPrograms } from '../db/schema';
+import { embeddings, parties, partyPrograms } from '../db/schema';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
 
@@ -65,7 +65,7 @@ export async function generateSingleEmbedding(text: string): Promise<number[]> {
  */
 export async function findRelevantContent(
   query: string,
-  partyId: string,
+  partyShortName: string,
   limit = 5,
   minSimilarity = 0.3
 ): Promise<RetrievalResult[]> {
@@ -82,7 +82,7 @@ export async function findRelevantContent(
       })
       .from(partyPrograms);
 
-    // Check if the specific party program exists
+    // Check if the specific party program exists by joining with parties table
     const _specificPartyProgram = await db
       .select({
         id: partyPrograms.id,
@@ -90,7 +90,8 @@ export async function findRelevantContent(
         title: partyPrograms.title,
       })
       .from(partyPrograms)
-      .where(eq(partyPrograms.partyId, partyId));
+      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
+      .where(eq(parties.shortName, partyShortName));
 
     const results = await db
       .select({
@@ -103,13 +104,14 @@ export async function findRelevantContent(
       })
       .from(embeddings)
       .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
+      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
       .where(
-        and(gt(similarity, minSimilarity), eq(partyPrograms.partyId, partyId))
+        and(gt(similarity, minSimilarity), eq(parties.shortName, partyShortName))
       )
       .orderBy(desc(similarity))
       .limit(limit);
 
-    // Let's also try without the partyId filter to see what we get
+    // Let's also try without the party filter to see what we get
     const _resultsWithoutPartyFilter = await db
       .select({
         content: embeddings.content,

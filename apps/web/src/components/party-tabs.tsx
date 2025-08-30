@@ -9,11 +9,14 @@ import { cn } from '@/lib/utils';
 
 type PartyTabsProps = {
   parties: Party[];
-  activePartyId: string;
-  onTabChange: (partyId: string) => void;
+  activePartyShortName: string;
+  onTabChange: (partyShortName: string) => void;
   className?: string;
   messageTrigger?: { message: string; timestamp: number } | null;
-  onPartyMessagesChange?: (partyId: string, hasMessages: boolean) => void;
+  onPartyMessagesChange?: (
+    partyShortName: string,
+    hasMessages: boolean
+  ) => void;
   showSuggestions?: boolean;
   suggestions?: string[];
   onSuggestionClick?: (suggestion: string) => void;
@@ -28,7 +31,7 @@ const SPRING_MASS = 0.8;
 
 export function PartyTabs({
   parties,
-  activePartyId,
+  activePartyShortName,
   onTabChange,
   className,
   messageTrigger,
@@ -37,7 +40,9 @@ export function PartyTabs({
   suggestions = [],
   onSuggestionClick,
 }: PartyTabsProps) {
-  const activeIndex = parties.findIndex((party) => party.id === activePartyId);
+  const activeIndex = parties.findIndex(
+    (party) => party.shortName === activePartyShortName
+  );
 
   const { handlePanStart, handlePan, handlePanEnd, swipeState } =
     useSwipeNavigation({
@@ -45,7 +50,7 @@ export function PartyTabs({
       totalItems: parties.length,
       onIndexChange: (newIndex) => {
         if (parties[newIndex]) {
-          onTabChange(parties[newIndex].id);
+          onTabChange(parties[newIndex].shortName);
         }
       },
     });
@@ -61,18 +66,18 @@ export function PartyTabs({
         <Tabs
           className="flex flex-col"
           onValueChange={onTabChange}
-          value={activePartyId}
+          value={activePartyShortName}
         >
           <TabsList className="scrollbar-hide relative mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
             {parties.map((party) => {
-              const isActive = party.id === activePartyId;
+              const isActive = party.shortName === activePartyShortName;
               return (
                 <TabsTrigger
                   className={cn(
                     'h-8 flex-shrink-0 rounded-full px-8 text-sm transition-colors data-[state=active]:text-white data-[state=active]:shadow-sm',
                     'hover:bg-foreground/10 data-[state=active]:hover:brightness-110'
                   )}
-                  key={party.id}
+                  key={party.shortName}
                   style={
                     {
                       '--tw-bg-opacity': isActive ? '1' : '0',
@@ -80,7 +85,7 @@ export function PartyTabs({
                       color: isActive ? '#ffffff' : undefined,
                     } as React.CSSProperties
                   }
-                  value={party.id}
+                  value={party.shortName}
                 >
                   {party.shortName}
                 </TabsTrigger>
@@ -112,17 +117,18 @@ export function PartyTabs({
         {parties.map((party) => (
           <motion.div
             animate={{
-              opacity: party.id === activePartyId ? 1 : 0,
-              scale: party.id === activePartyId ? 1 : INACTIVE_SCALE,
+              opacity: party.shortName === activePartyShortName ? 1 : 0,
+              scale:
+                party.shortName === activePartyShortName ? 1 : INACTIVE_SCALE,
             }}
             className={cn(
               'absolute inset-0',
-              party.id === activePartyId
+              party.shortName === activePartyShortName
                 ? 'pointer-events-auto'
                 : 'pointer-events-none'
             )}
             initial={false}
-            key={party.id}
+            key={party.shortName}
             style={{
               // Ensure the entire area is draggable, not just the content
               touchAction: 'pan-y pinch-zoom',
@@ -139,7 +145,9 @@ export function PartyTabs({
               onMessagesChange={onPartyMessagesChange}
               onSuggestionClick={onSuggestionClick}
               party={party}
-              showSuggestions={showSuggestions && party.id === activePartyId}
+              showSuggestions={
+                showSuggestions && party.shortName === activePartyShortName
+              }
               suggestions={suggestions}
             />
           </motion.div>

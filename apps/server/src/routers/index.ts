@@ -16,10 +16,10 @@ const MAX_STEPS = 5;
 
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
-  partyId: z
+  partyShortName: z
     .string()
     .optional()
-    .describe('Specific party ID for party-based responses'),
+    .describe('Specific party short name for party-based responses'),
 });
 
 // Party data with actual database party IDs (UUIDs)
@@ -90,14 +90,14 @@ export const appRouter = {
   }),
 
   chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
-    const { messages, partyId } = input;
+    const { messages, partyShortName } = input;
 
-    // Find the party information if partyId is provided
+    // Find the party information if partyShortName is provided
     let party: (typeof PARTIES)[number] | null = null;
-    if (partyId) {
-      party = PARTIES.find((p) => p.id === partyId) || null;
+    if (partyShortName) {
+      party = PARTIES.find((p) => p.shortName === partyShortName) || null;
       if (!party) {
-        throw new Error(`Party not found: ${partyId}`);
+        throw new Error(`Party not found: ${partyShortName}`);
       }
     }
 
@@ -121,7 +121,7 @@ export const appRouter = {
             try {
               const relevantContent = await findRelevantContent(
                 question,
-                partyId || '',
+                party?.shortName || '',
                 DEFAULT_CONTENT_LIMIT,
                 DEFAULT_SIMILARITY_THRESHOLD
               );

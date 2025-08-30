@@ -5,13 +5,13 @@ import { PARTIES } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 
 type PartySelectorProps = {
-  selectedPartyIds: string[];
-  onSelectionChange: (partyIds: string[]) => void;
+  selectedPartyShortNames: string[];
+  onSelectionChange: (partyShortNames: string[]) => void;
   className?: string;
 };
 
 export function PartySelector({
-  selectedPartyIds,
+  selectedPartyShortNames,
   onSelectionChange,
   className,
 }: PartySelectorProps) {
@@ -40,11 +40,15 @@ export function PartySelector({
     return luminance > LUMINANCE_THRESHOLD ? '#1a1a1a' : '#ffffff';
   };
 
-  const _toggleParty = (partyId: string) => {
-    if (selectedPartyIds.includes(partyId)) {
-      onSelectionChange(selectedPartyIds.filter((id) => id !== partyId));
+  const _toggleParty = (partyShortName: string) => {
+    if (selectedPartyShortNames.includes(partyShortName)) {
+      onSelectionChange(
+        selectedPartyShortNames.filter(
+          (shortName) => shortName !== partyShortName
+        )
+      );
     } else {
-      onSelectionChange([...selectedPartyIds, partyId]);
+      onSelectionChange([...selectedPartyShortNames, partyShortName]);
     }
   };
 
@@ -55,10 +59,10 @@ export function PartySelector({
         onValueChange={(vals) => onSelectionChange(vals as string[])}
         size="sm"
         type="multiple"
-        value={selectedPartyIds}
+        value={selectedPartyShortNames}
       >
         {PARTIES.map((party) => {
-          const isSelected = selectedPartyIds.includes(party.id);
+          const isSelected = selectedPartyShortNames.includes(party.shortName);
           const contrast = getContrastText(party.color);
           return (
             <ToggleGroupItem
@@ -73,7 +77,7 @@ export function PartySelector({
                 'will-change-transform active:scale-[0.97] data-[state=on]:active:scale-[0.96]'
               )}
               data-state={isSelected ? 'on' : 'off'}
-              key={party.id}
+              key={party.shortName}
               style={
                 isSelected
                   ? {
@@ -90,7 +94,7 @@ export function PartySelector({
                       background: `${party.color}0a`, // very subtle background tint
                     }
               }
-              value={party.id}
+              value={party.shortName}
             >
               <span className="relative z-10">{party.shortName}</span>
               {isSelected && (
@@ -107,9 +111,9 @@ export function PartySelector({
           );
         })}
       </ToggleGroup>
-      {selectedPartyIds.length > 0 && (
+      {selectedPartyShortNames.length > 0 && (
         <Badge className="h-8 rounded-full px-3 text-xs" variant="secondary">
-          {selectedPartyIds.length} valgt
+          {selectedPartyShortNames.length} valgt
         </Badge>
       )}
     </div>

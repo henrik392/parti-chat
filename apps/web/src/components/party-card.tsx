@@ -18,7 +18,7 @@ type PartyCardProps = {
   party: Party;
   messageTrigger?: { message: string; timestamp: number } | null;
   className?: string;
-  onMessagesChange?: (partyId: string, hasMessages: boolean) => void;
+  onMessagesChange?: (partyShortName: string, hasMessages: boolean) => void;
   showSuggestions?: boolean;
   suggestions?: string[];
   onSuggestionClick?: (suggestion: string) => void;
@@ -42,7 +42,7 @@ export function PartyCard({
         const result = await client.chat(
           {
             messages: options.messages,
-            partyId: party.id,
+            partyShortName: party.shortName,
           },
           { signal: options.abortSignal }
         );
@@ -89,9 +89,9 @@ export function PartyCard({
   useEffect(() => {
     if (onMessagesChange && prevHasMessagesRef.current !== hasMessages) {
       prevHasMessagesRef.current = hasMessages;
-      onMessagesChange(party.id, hasMessages);
+      onMessagesChange(party.shortName, hasMessages);
     }
-  }, [hasMessages, party.id, onMessagesChange]);
+  }, [hasMessages, party.shortName, onMessagesChange]);
 
   const copyToClipboard = async () => {
     if (responseText) {

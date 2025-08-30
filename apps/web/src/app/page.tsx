@@ -25,9 +25,11 @@ const suggestions = [
 
 const ChatBotDemo = () => {
   const [input, setInput] = useState('');
-  const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
+  const [selectedPartyShortNames, setSelectedPartyShortNames] = useState<
+    string[]
+  >([]);
   const [selectedParties, setSelectedParties] = useState<Party[]>([]);
-  const [activePartyId, setActivePartyId] = useState<string>('');
+  const [activePartyShortName, setActivePartyShortName] = useState<string>('');
   const [messageTrigger, setMessageTrigger] = useState<{
     message: string;
     timestamp: number;
@@ -36,23 +38,26 @@ const ChatBotDemo = () => {
     new Set()
   );
 
-  // Update selected parties when IDs change
+  // Update selected parties when short names change
   useEffect(() => {
     const parties = PARTIES.filter((party) =>
-      selectedPartyIds.includes(party.id)
+      selectedPartyShortNames.includes(party.shortName)
     );
     setSelectedParties(parties);
 
     // Set first selected party as active if no active party
-    if (parties.length > 0 && !activePartyId) {
-      setActivePartyId(parties[0].id);
+    if (parties.length > 0 && !activePartyShortName) {
+      setActivePartyShortName(parties[0].shortName);
     }
 
     // Clear active party if it's no longer selected
-    if (activePartyId && !selectedPartyIds.includes(activePartyId)) {
-      setActivePartyId(parties[0]?.id || '');
+    if (
+      activePartyShortName &&
+      !selectedPartyShortNames.includes(activePartyShortName)
+    ) {
+      setActivePartyShortName(parties[0]?.shortName || '');
     }
-  }, [selectedPartyIds, activePartyId]);
+  }, [selectedPartyShortNames, activePartyShortName]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,13 +76,16 @@ const ChatBotDemo = () => {
     setInput(suggestion);
   };
 
-  const handlePartyMessagesChange = (partyId: string, hasMessages: boolean) => {
+  const handlePartyMessagesChange = (
+    partyShortName: string,
+    hasMessages: boolean
+  ) => {
     setPartiesWithMessages((prev) => {
       const newSet = new Set(prev);
       if (hasMessages) {
-        newSet.add(partyId);
+        newSet.add(partyShortName);
       } else {
-        newSet.delete(partyId);
+        newSet.delete(partyShortName);
       }
       return newSet;
     });
@@ -85,7 +93,8 @@ const ChatBotDemo = () => {
 
   const hasSelectedParties = selectedParties.length > 0;
   const hasAnyMessages = useMemo(
-    () => selectedParties.some((party) => partiesWithMessages.has(party.id)),
+    () =>
+      selectedParties.some((party) => partiesWithMessages.has(party.shortName)),
     [selectedParties, partiesWithMessages]
   );
 
@@ -100,11 +109,11 @@ const ChatBotDemo = () => {
             {/* Party Tabs for conversations */}
             {hasSelectedParties && (
               <PartyTabs
-                activePartyId={activePartyId}
+                activePartyShortName={activePartyShortName}
                 messageTrigger={messageTrigger}
                 onPartyMessagesChange={handlePartyMessagesChange}
                 onSuggestionClick={handleSuggestionClick}
-                onTabChange={setActivePartyId}
+                onTabChange={setActivePartyShortName}
                 parties={selectedParties}
                 showSuggestions={!hasAnyMessages}
                 suggestions={suggestions}
@@ -117,8 +126,8 @@ const ChatBotDemo = () => {
         <div className="space-y-3 px-2 pt-4 sm:px-4">
           <PartySelector
             className="px-0 sm:px-1"
-            onSelectionChange={setSelectedPartyIds}
-            selectedPartyIds={selectedPartyIds}
+            onSelectionChange={setSelectedPartyShortNames}
+            selectedPartyShortNames={selectedPartyShortNames}
           />
 
           <PromptInput
@@ -130,7 +139,7 @@ const ChatBotDemo = () => {
                 minHeight={8}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={(() => {
-                  if (selectedPartyIds.length === 0) {
+                  if (selectedPartyShortNames.length === 0) {
                     return 'Velg partier først...';
                   }
                   return 'Still spørsmål';
