@@ -43,22 +43,33 @@ export function PartyTabs({
           value={activePartyId}
         >
           <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto border-none shadow-sm rounded-lg p-1 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
-            {parties.map((party) => (
-              <TabsTrigger
-                className="flex-shrink-0 data-[state=active]:text-white data-[state=active]:shadow-sm"
-                key={party.id}
-                style={
-                  {
-                    '--tw-bg-opacity': party.id === activePartyId ? '1' : '0',
-                    backgroundColor:
-                      party.id === activePartyId ? party.color : undefined,
-                  } as React.CSSProperties
-                }
-                value={party.id}
-              >
-                {party.shortName}
-              </TabsTrigger>
-            ))}
+            {parties.map((party, idx) => {
+              const isActive = party.id === activePartyId;
+              const onlyOne = parties.length === 1;
+              const isFirst = idx === 0;
+              const isLast = idx === parties.length - 1;
+              return (
+                <TabsTrigger
+                  key={party.id}
+                  className={cn(
+                    'flex-shrink-0 data-[state=active]:text-white data-[state=active]:shadow-sm px-4',
+                    'rounded-none',
+                    onlyOne && 'rounded-full',
+                    !onlyOne && isFirst && 'rounded-l-full',
+                    !onlyOne && isLast && 'rounded-r-full'
+                  )}
+                  style={
+                    {
+                      '--tw-bg-opacity': isActive ? '1' : '0',
+                      backgroundColor: isActive ? party.color : undefined,
+                    } as React.CSSProperties
+                  }
+                  value={party.id}
+                >
+                  {party.shortName}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </Tabs>
       </div>
