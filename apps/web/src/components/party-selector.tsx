@@ -67,7 +67,7 @@ export function PartySelector({
                 '!rounded-full relative h-8 flex-none overflow-hidden px-4 text-xs',
                 'border transition-all duration-100 ease-in-out',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                'data-[state=off]:hover:!bg-gray-50 data-[state=off]:hover:!border-2 data-[state=off]:hover:!font-bold data-[state=off]:hover:shadow-sm',
+                'data-[state=off]:hover:!bg-white data-[state=off]:hover:scale-105 data-[state=off]:hover:shadow-md data-[state=off]:hover:ring-2 data-[state=off]:hover:ring-gray-200',
                 'data-[state=on]:font-bold data-[state=on]:text-[color:var(--party-contrast)] data-[state=on]:shadow-sm data-[state=on]:hover:scale-[1.02] data-[state=on]:hover:shadow-md',
                 'data-[state=off]:font-medium',
                 'will-change-transform active:scale-[0.97] data-[state=on]:active:scale-[0.96]'
