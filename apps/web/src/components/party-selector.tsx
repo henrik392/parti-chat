@@ -85,7 +85,7 @@ export function PartySelector({
                       color: contrast,
                     }
                   : {
-                      color: `${party.color}ee`, // even more opaque for better contrast
+                      color: '#1f2937', // gray-800 - dark gray/black text for better readability
                       borderColor: `${party.color}cc`, // much darker border for better contrast
                       background: `${party.color}0a`, // very subtle background tint
                     }
