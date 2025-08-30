@@ -55,11 +55,12 @@ export function PartySelector({
             <ToggleGroupItem
               aria-label={party.name}
               className={cn(
-                '!rounded-full relative h-8 flex-none overflow-hidden px-4 font-medium text-xs',
+                '!rounded-full relative h-8 flex-none overflow-hidden px-4 text-xs',
                 'border transition-colors duration-150 ease-out',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
                 'hover:bg-muted/40 data-[state=off]:hover:text-foreground',
-                'data-[state=on]:text-[color:var(--party-contrast)] data-[state=on]:shadow-sm data-[state=on]:hover:shadow',
+                'data-[state=on]:font-bold data-[state=on]:text-[color:var(--party-contrast)] data-[state=on]:shadow-sm data-[state=on]:hover:shadow',
+                'data-[state=off]:font-medium',
                 'will-change-transform active:scale-[0.97] data-[state=on]:active:scale-[0.96]'
               )}
               data-state={isSelected ? 'on' : 'off'}
@@ -75,8 +76,8 @@ export function PartySelector({
                       color: contrast,
                     }
                   : {
-                      color: party.color,
-                      borderColor: `${party.color}80`, // semi transparent border for subtle look
+                      color: `${party.color}dd`, // slightly more opaque for better contrast
+                      borderColor: `${party.color}aa`, // darker border for better contrast
                       background: 'transparent',
                     }
               }
