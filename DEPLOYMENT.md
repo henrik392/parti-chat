@@ -38,7 +38,7 @@ This guide explains how to deploy your monorepo with separate backend and fronte
    ```
 5. **Domain**:
    - Host: `api.yourdomain.com`
-   - Port: `3000`
+   - Port: `3001`
    - HTTPS: Enabled (with Let's Encrypt)
 
 ### 2. Create Frontend Application  
@@ -112,8 +112,9 @@ NIXPACKS_INSTALL_CMD=bun install --frozen-lockfile
 ### Common Issues
 
 1. **Bad Gateway Error**:
-   - Verify the application is listening on `0.0.0.0:3000` (not just `localhost`)
-   - Check if the correct port is configured in domain settings
+   - Backend: Verify listening on `0.0.0.0:3001` (not just `localhost`)
+   - Frontend: Verify listening on `0.0.0.0:3000` (not just `localhost`)
+   - Check if the correct ports are configured in domain settings
 
 2. **Build Failures**:
    - Ensure Build Path is correctly set (`/apps/server` or `/apps/web`)
