@@ -5,6 +5,7 @@ import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
 import { findRelevantContentByParties } from '../lib/embedding-generator';
 import { protectedProcedure, publicProcedure } from '../lib/orpc';
+import { logger } from '../lib/pino-logger';
 import { generateComparisonSummary } from '../lib/rag-service';
 import { generateSystemPrompt } from '../lib/system-prompt';
 
@@ -85,85 +86,127 @@ export const appRouter = {
   chat: publicProcedure.input(chatInputSchema).handler(async ({ input }) => {
     const { messages, partyId } = input;
 
-    // If no party ID is provided, use the generic chat
-    if (!partyId) {
+    logger.info(
+      `Chat endpoint called - partyId: ${partyId}, messagesCount: ${messages.length}`
+    );
+
+    try {
+      // If no party ID is provided, use the generic chat
+      if (!partyId) {
+        logger.info('Generic chat mode - no party ID provided');
+        const result = streamText({
+          model: openrouter('openai/gpt-5-mini'),
+          messages: convertToModelMessages(messages),
+          system: 'You are a helpful assistant.',
+        });
+        return streamToEventIterator(result.toUIMessageStream());
+      }
+
+      // Find the party information
+      const party = PARTIES.find((p) => p.id === partyId);
+      if (!party) {
+        logger.error(`Party not found: ${partyId}`);
+        throw new Error(`Party not found: ${partyId}`);
+      }
+
+      logger.info(`Found party: ${party.name} (${party.id})`);
+
+      // Get the user's question from the last message
+      const lastMessage = messages.at(-1);
+      logger.debug('Processing last message...');
+
+      const userQuestion =
+        typeof lastMessage?.content === 'string'
+          ? lastMessage.content
+          : lastMessage?.content[0]?.text || '';
+
+      if (!userQuestion) {
+        logger.error('No question provided in messages');
+        throw new Error('No question provided');
+      }
+
+      logger.info(
+        `Extracted user question (${userQuestion.length} chars): ${userQuestion.substring(0, 100)}${userQuestion.length > 100 ? '...' : ''}`
+      );
+
+      // Get relevant content for this party using RAG
+      logger.info(
+        `Starting RAG search for party ${partyId} with limit ${DEFAULT_CONTENT_LIMIT}`
+      );
+      const relevantContent = await findRelevantContentByParties(
+        userQuestion,
+        [partyId],
+        DEFAULT_CONTENT_LIMIT,
+        DEFAULT_SIMILARITY_THRESHOLD
+      );
+      logger.info(
+        `RAG search completed - found ${relevantContent.length} results`
+      );
+
+      // Build context from retrieved content
+      let ragContext = '';
+      let ragCitations = '';
+
+      if (relevantContent.length === 0) {
+        ragContext = `Ingen relevant informasjon funnet i ${party.name}s partiprogram.`;
+        logger.warn(
+          `No relevant content found for party: ${party.name} (${partyId})`
+        );
+      } else {
+        ragContext = relevantContent
+          .map(
+            (contentResult) =>
+              `Fra ${party.name}s partiprogram${contentResult.chapterTitle ? ` (${contentResult.chapterTitle})` : ''}: ${contentResult.content}`
+          )
+          .join('\n\n');
+
+        ragCitations = relevantContent
+          .map(
+            (citationResult, citationIndex) =>
+              `[${citationIndex + 1}] ${citationResult.chapterTitle || 'Ukjent kapittel'}${citationResult.pageNumber ? `, side ${citationResult.pageNumber}` : ''}`
+          )
+          .join('\n');
+
+        logger.info(
+          `Built RAG context: ${ragContext.length} chars, ${relevantContent.length} citations`
+        );
+      }
+
+      // Create system message with party-specific context
+      const systemMessage = generateSystemPrompt(
+        party.name,
+        ragContext,
+        ragCitations
+      );
+      logger.debug(`Generated system prompt: ${systemMessage.length} chars`);
+
+      // Call AI model
+      logger.info('Calling OpenRouter AI model (gpt-5-mini)');
       const result = streamText({
         model: openrouter('openai/gpt-5-mini'),
-        messages: convertToModelMessages(messages),
-        system: 'You are a helpful assistant.',
-      });
-      return streamToEventIterator(result.toUIMessageStream());
-    }
-
-    // Find the party information
-    const party = PARTIES.find((p) => p.id === partyId);
-    if (!party) {
-      throw new Error(`Party not found: ${partyId}`);
-    }
-
-    // Get the user's question from the last message
-    const lastMessage = messages.at(-1);
-    const userQuestion =
-      typeof lastMessage?.content === 'string'
-        ? lastMessage.content
-        : lastMessage?.content[0]?.text || '';
-
-    if (!userQuestion) {
-      throw new Error('No question provided');
-    }
-
-    // Get relevant content for this party using RAG
-    const relevantContent = await findRelevantContentByParties(
-      userQuestion,
-      [partyId],
-      DEFAULT_CONTENT_LIMIT,
-      DEFAULT_SIMILARITY_THRESHOLD
-    );
-
-    // Build context from retrieved content
-    let ragContext = '';
-    let ragCitations = '';
-
-    if (relevantContent.length === 0) {
-      ragContext = `Ingen relevant informasjon funnet i ${party.name}s partiprogram.`;
-    } else {
-      ragContext = relevantContent
-        .map(
-          (contentResult) =>
-            `Fra ${party.name}s partiprogram${contentResult.chapterTitle ? ` (${contentResult.chapterTitle})` : ''}: ${contentResult.content}`
-        )
-        .join('\n\n');
-
-      ragCitations = relevantContent
-        .map(
-          (citationResult, citationIndex) =>
-            `[${citationIndex + 1}] ${citationResult.chapterTitle || 'Ukjent kapittel'}${citationResult.pageNumber ? `, side ${citationResult.pageNumber}` : ''}`
-        )
-        .join('\n');
-    }
-
-    // Create system message with party-specific context
-    const systemMessage = generateSystemPrompt(
-      party.name,
-      ragContext,
-      ragCitations
-    );
-
-    const result = streamText({
-      model: openrouter('openai/gpt-5-mini'),
-      messages: [
-        { role: 'system', content: systemMessage },
-        { role: 'user', content: userQuestion },
-      ],
-      temperature: 0.1, // Low temperature for factual responses
-      providerOptions: {
-        openai: {
-          reasoning_effort: 'low',
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: userQuestion },
+        ],
+        temperature: 0.1, // Low temperature for factual responses
+        providerOptions: {
+          openai: {
+            reasoning_effort: 'low',
+          },
         },
-      },
-    });
+      });
 
-    return streamToEventIterator(result.toUIMessageStream());
+      logger.info('AI model response initiated, streaming back to client');
+      return streamToEventIterator(result.toUIMessageStream());
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logger.error(
+        `Error in chat endpoint: ${errorMessage}${errorStack ? `\nStack: ${errorStack}` : ''}`
+      );
+      throw error;
+    }
   }),
 };
 export type AppRouter = typeof appRouter;

@@ -16,6 +16,7 @@ import {
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { PartySelector } from '@/components/party-selector';
 import { PartyTabs } from '@/components/party-tabs';
+import { logger } from '@/lib/logger';
 import { PARTIES, type Party } from '@/lib/parties';
 
 type MessagePart = {
@@ -74,13 +75,20 @@ const ChatBotDemo = () => {
     let responseContent = '';
 
     try {
+      logger.info('Starting to read stream...');
       for await (const chunk of stream) {
+        logger.debug(`Received chunk: ${JSON.stringify(chunk)}`);
         if (chunk.type === 'text-delta') {
           responseContent += chunk.textDelta;
         }
       }
+      logger.info(
+        `Stream completed, total content length: ${responseContent.length}`
+      );
     } catch (error) {
-      console.error('Stream error:', error);
+      logger.error(
+        `Stream error: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
 
     return responseContent;
@@ -88,6 +96,9 @@ const ChatBotDemo = () => {
 
   const sendToParty = useCallback(
     async (question: string, partyId: string) => {
+      logger.info(
+        `Sending to party: ${partyId}, question: ${question.substring(0, 50)}...`
+      );
       setPartyLoadingStates((prev) => ({ ...prev, [partyId]: true }));
       setPartyErrors((prev) => ({ ...prev, [partyId]: null }));
 
@@ -101,12 +112,15 @@ const ChatBotDemo = () => {
           },
         ];
 
+        logger.info(`Calling client.chat with partyId: ${partyId}`);
         const result = await client.chat({
           messages,
           partyId,
         });
+        logger.debug('Client.chat result received');
 
         const responseContent = await handleStreamResponse(result);
+        logger.info(`Final response content length: ${responseContent.length}`);
 
         // biome-ignore lint/nursery/noUnnecessaryConditions: Content can be empty string
         if (responseContent) {
@@ -120,13 +134,18 @@ const ChatBotDemo = () => {
               },
             ],
           }));
+          logger.info(`Added message to party: ${partyId}`);
         } else {
+          logger.warn('No response content received');
           setPartyErrors((prev) => ({
             ...prev,
             [partyId]: 'No response received',
           }));
         }
       } catch (error) {
+        logger.error(
+          `Error in sendToParty: ${error instanceof Error ? error.message : String(error)}`
+        );
         setPartyErrors((prev) => ({
           ...prev,
           [partyId]: error instanceof Error ? error.message : 'Unknown error',
