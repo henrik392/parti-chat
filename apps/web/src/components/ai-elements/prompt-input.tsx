@@ -7,7 +7,7 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
 } from 'react';
-import { Children, useEffect, useRef } from 'react';
+import { Children, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -72,9 +72,8 @@ export const PromptInputTextarea = ({
 
   return (
     <Textarea
-      ref={ref}
       className={cn(
-        'w-full resize-none rounded-none border-none px-2 py-1 shadow-none outline-none ring-0 text-sm leading-snug',
+        'w-full resize-none rounded-none border-none px-2 py-1 text-sm leading-snug shadow-none outline-none ring-0',
         'bg-transparent dark:bg-transparent',
         'focus-visible:ring-0',
         // Align text center vertically
@@ -82,12 +81,13 @@ export const PromptInputTextarea = ({
         className
       )}
       name="message"
-      value={value}
       onChange={(e) => {
         onChange?.(e);
       }}
       onKeyDown={handleKeyDown}
       placeholder={placeholder}
+      ref={ref}
+      value={value}
       {...props}
     />
   );
@@ -100,7 +100,10 @@ export const PromptInputToolbar = ({
   ...props
 }: PromptInputToolbarProps) => (
   <div
-    className={cn('flex items-center justify-end px-2 py-1 gap-2 min-h-0', className)}
+    className={cn(
+      'flex min-h-0 items-center justify-end gap-2 px-2 py-1',
+      className
+    )}
     {...props}
   />
 );
@@ -113,7 +116,7 @@ export const PromptInputTools = ({
 }: PromptInputToolsProps) => (
   <div
     className={cn(
-      'flex items-center gap-2 min-h-0',
+      'flex min-h-0 items-center gap-2',
       '[&_button:first-child]:rounded-bl-xl',
       className
     )}
@@ -172,7 +175,7 @@ export const PromptInputSubmit = ({
 
   return (
     <Button
-      className={cn('gap-1.5 rounded-lg h-8 w-8', className)}
+      className={cn('h-8 w-8 gap-1.5 rounded-lg', className)}
       size={size}
       type="submit"
       variant={variant}

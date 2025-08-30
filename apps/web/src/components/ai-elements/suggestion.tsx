@@ -11,7 +11,13 @@ export const Suggestions = ({
   children,
   ...props
 }: SuggestionsProps) => (
-  <div className={cn('flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto', className)} {...props}>
+  <div
+    className={cn(
+      'mx-auto flex max-w-2xl flex-wrap items-center justify-center gap-2',
+      className
+    )}
+    {...props}
+  >
     {children}
   </div>
 );

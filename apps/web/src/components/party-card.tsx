@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon } from 'lucide-react';
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import {
   InlineCitation,
   InlineCitationCard,
@@ -217,7 +217,9 @@ export function PartyCard({
               {party.shortName}
             </div>
             <div>
-              <h3 className="font-semibold text-lg m-0 leading-tight">{party.name}</h3>
+              <h3 className="m-0 font-semibold text-lg leading-tight">
+                {party.name}
+              </h3>
               <Badge
                 className="mt-1"
                 style={{
@@ -259,23 +261,23 @@ export function PartyCard({
           >
             {party.shortName}
           </div>
-            <h3 className="mb-2 font-medium text-lg">{party.name}</h3>
-            <p className="text-muted-foreground text-sm">
-              Still et spørsmål for å få svar fra {party.name}s partiprogram
-            </p>
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="mt-6">
-                <Suggestions>
-                  {suggestions.map((suggestion) => (
-                    <Suggestion
-                      key={suggestion}
-                      onClick={() => onSuggestionClick?.(suggestion)}
-                      suggestion={suggestion}
-                    />
-                  ))}
-                </Suggestions>
-              </div>
-            )}
+          <h3 className="mb-2 font-medium text-lg">{party.name}</h3>
+          <p className="text-muted-foreground text-sm">
+            Still et spørsmål for å få svar fra {party.name}s partiprogram
+          </p>
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="mt-6">
+              <Suggestions>
+                {suggestions.map((suggestion) => (
+                  <Suggestion
+                    key={suggestion}
+                    onClick={() => onSuggestionClick?.(suggestion)}
+                    suggestion={suggestion}
+                  />
+                ))}
+              </Suggestions>
+            </div>
+          )}
         </div>
       )}
 

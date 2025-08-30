@@ -1,10 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { PARTIES } from '@/lib/parties';
 import { cn } from '@/lib/utils';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useMemo } from 'react';
 
 type PartySelectorProps = {
   selectedPartyIds: string[];
@@ -20,15 +20,15 @@ export function PartySelector({
   // Simple contrast calculator to decide light/dark text over a party color
   const getContrastText = (hex: string) => {
     const c = hex.replace('#', '');
-    const r = parseInt(c.substring(0, 2), 16);
-    const g = parseInt(c.substring(2, 4), 16);
-    const b = parseInt(c.substring(4, 6), 16);
+    const r = Number.parseInt(c.substring(0, 2), 16);
+    const g = Number.parseInt(c.substring(2, 4), 16);
+    const b = Number.parseInt(c.substring(4, 6), 16);
     // Relative luminance approximation
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     return luminance > 0.6 ? '#1a1a1a' : '#ffffff';
   };
 
-  const toggleParty = (partyId: string) => {
+  const _toggleParty = (partyId: string) => {
     if (selectedPartyIds.includes(partyId)) {
       onSelectionChange(selectedPartyIds.filter((id) => id !== partyId));
     } else {
@@ -39,28 +39,31 @@ export function PartySelector({
   return (
     <div className={cn('flex flex-wrap items-center gap-3', className)}>
       <ToggleGroup
-        type="multiple"
-        size="sm"
-        value={selectedPartyIds}
-        onValueChange={(vals) => onSelectionChange(vals as string[])}
         className="flex flex-wrap gap-2"
+        onValueChange={(vals) => onSelectionChange(vals as string[])}
+        size="sm"
+        type="multiple"
+        value={selectedPartyIds}
       >
         {PARTIES.map((party) => {
           const isSelected = selectedPartyIds.includes(party.id);
-          const contrast = useMemo(() => getContrastText(party.color), [party.color]);
+          const contrast = useMemo(
+            () => getContrastText(party.color),
+            [party.color]
+          );
           return (
             <ToggleGroupItem
-              key={party.id}
-              value={party.id}
               aria-label={party.name}
               className={cn(
-                'relative flex-none h-8 px-4 text-xs font-medium !rounded-full overflow-hidden',
+                '!rounded-full relative h-8 flex-none overflow-hidden px-4 font-medium text-xs',
                 'border transition-colors duration-150 ease-out',
-                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
                 'hover:bg-muted/40 data-[state=off]:hover:text-foreground',
-                'data-[state=on]:shadow-sm data-[state=on]:hover:shadow data-[state=on]:text-[color:var(--party-contrast)]',
-                'active:scale-[0.97] data-[state=on]:active:scale-[0.96] will-change-transform'
+                'data-[state=on]:text-[color:var(--party-contrast)] data-[state=on]:shadow-sm data-[state=on]:hover:shadow',
+                'will-change-transform active:scale-[0.97] data-[state=on]:active:scale-[0.96]'
               )}
+              data-state={isSelected ? 'on' : 'off'}
+              key={party.id}
               style={
                 isSelected
                   ? {
@@ -73,18 +76,21 @@ export function PartySelector({
                     }
                   : {
                       color: party.color,
-                      borderColor: party.color + '80', // semi transparent border for subtle look
+                      borderColor: `${party.color}80`, // semi transparent border for subtle look
                       background: 'transparent',
                     }
               }
-              data-state={isSelected ? 'on' : 'off'}
+              value={party.id}
             >
               <span className="relative z-10">{party.shortName}</span>
               {isSelected && (
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay"
-                  style={{ background: 'radial-gradient(circle at 30% 30%, #ffffff55, transparent 70%)' }}
+                  style={{
+                    background:
+                      'radial-gradient(circle at 30% 30%, #ffffff55, transparent 70%)',
+                  }}
                 />
               )}
             </ToggleGroupItem>

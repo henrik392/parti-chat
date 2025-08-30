@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -10,9 +10,7 @@ import {
   PromptInput,
   PromptInputSubmit,
   PromptInputTextarea,
-  PromptInputToolbar,
 } from '@/components/ai-elements/prompt-input';
-import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { PartySelector } from '@/components/party-selector';
 import { PartyTabs } from '@/components/party-tabs';
 import { PARTIES, type Party } from '@/lib/parties';
@@ -33,7 +31,9 @@ const ChatBotDemo = () => {
     message: string;
     timestamp: number;
   } | null>(null);
-  const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(new Set());
+  const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(
+    new Set()
+  );
 
   // Update selected parties when IDs change
   useEffect(() => {
@@ -71,7 +71,7 @@ const ChatBotDemo = () => {
   };
 
   const handlePartyMessagesChange = (partyId: string, hasMessages: boolean) => {
-    setPartiesWithMessages(prev => {
+    setPartiesWithMessages((prev) => {
       const newSet = new Set(prev);
       if (hasMessages) {
         newSet.add(partyId);
@@ -83,8 +83,8 @@ const ChatBotDemo = () => {
   };
 
   const hasSelectedParties = selectedParties.length > 0;
-  const hasAnyMessages = useMemo(() =>
-    selectedParties.some(party => partiesWithMessages.has(party.id)),
+  const hasAnyMessages = useMemo(
+    () => selectedParties.some((party) => partiesWithMessages.has(party.id)),
     [selectedParties, partiesWithMessages]
   );
 
@@ -107,12 +107,12 @@ const ChatBotDemo = () => {
               <PartyTabs
                 activePartyId={activePartyId}
                 messageTrigger={messageTrigger}
+                onPartyMessagesChange={handlePartyMessagesChange}
+                onSuggestionClick={handleSuggestionClick}
                 onTabChange={setActivePartyId}
                 parties={selectedParties}
-                onPartyMessagesChange={handlePartyMessagesChange}
                 showSuggestions={!hasAnyMessages}
                 suggestions={suggestions}
-                onSuggestionClick={handleSuggestionClick}
               />
             )}
           </ConversationContent>
@@ -127,11 +127,12 @@ const ChatBotDemo = () => {
           />
 
           <PromptInput
+            className="flex items-center divide-y-0 rounded-3xl border px-3 py-2"
             onSubmit={handleSubmit}
-            className="flex items-center divide-y-0 px-3 py-2 border rounded-3xl"
           >
             <div className="flex w-full items-center gap-2">
               <PromptInputTextarea
+                minHeight={8}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={(() => {
                   if (selectedPartyIds.length === 0) {
@@ -140,9 +141,8 @@ const ChatBotDemo = () => {
                   return 'Still spørsmål';
                 })()}
                 value={input}
-                minHeight={8}
               />
-                <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
+              <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
             </div>
           </PromptInput>
         </div>

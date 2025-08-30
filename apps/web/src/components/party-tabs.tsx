@@ -1,7 +1,6 @@
 'use client';
 
 import { PartyCard } from '@/components/party-card';
-import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
@@ -36,32 +35,27 @@ export function PartyTabs({
   return (
     <div className={cn('flex h-full w-full flex-col', className)}>
       {/* Tab Navigation - Fixed */}
-      <div className="fixed top-2 sm:top-6 left-1/2 transform -translate-x-1/2 z-50 bg-background max-w-5xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)]">
+      <div className="-translate-x-1/2 fixed top-2 left-1/2 z-50 flex w-[calc(100vw-1rem)] max-w-5xl justify-center sm:top-6 sm:w-[calc(100vw-3rem)]">
         <Tabs
           className="flex flex-col"
           onValueChange={onTabChange}
           value={activePartyId}
         >
-          <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto border-none shadow-sm rounded-lg p-1 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
-            {parties.map((party, idx) => {
+          <TabsList className="scrollbar-hide mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent py-5 px-2 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
+            {parties.map((party) => {
               const isActive = party.id === activePartyId;
-              const onlyOne = parties.length === 1;
-              const isFirst = idx === 0;
-              const isLast = idx === parties.length - 1;
               return (
                 <TabsTrigger
-                  key={party.id}
                   className={cn(
-                    'flex-shrink-0 data-[state=active]:text-white data-[state=active]:shadow-sm px-4',
-                    'rounded-none',
-                    onlyOne && 'rounded-full',
-                    !onlyOne && isFirst && 'rounded-l-full',
-                    !onlyOne && isLast && 'rounded-r-full'
+                    'h-8 flex-shrink-0 rounded-full px-8 text-sm transition-colors data-[state=active]:text-white data-[state=active]:shadow-sm',
+                    'hover:bg-foreground/10 data-[state=active]:hover:brightness-110'
                   )}
+                  key={party.id}
                   style={
                     {
                       '--tw-bg-opacity': isActive ? '1' : '0',
                       backgroundColor: isActive ? party.color : undefined,
+                      color: isActive ? '#ffffff' : undefined,
                     } as React.CSSProperties
                   }
                   value={party.id}
@@ -75,24 +69,24 @@ export function PartyTabs({
       </div>
 
       {/* Party Cards - All rendered but only active one visible */}
-      <div className="mt-16 sm:mt-20 flex-1 relative">
+      <div className="relative mt-16 flex-1 sm:mt-20">
         {parties.map((party) => (
           <div
-            key={party.id}
             className={cn(
               'absolute inset-0 transition-opacity duration-200',
               party.id === activePartyId
-                ? 'opacity-100 pointer-events-auto'
-                : 'opacity-0 pointer-events-none'
+                ? 'pointer-events-auto opacity-100'
+                : 'pointer-events-none opacity-0'
             )}
+            key={party.id}
           >
             <PartyCard
               messageTrigger={messageTrigger}
-              party={party}
               onMessagesChange={onPartyMessagesChange}
+              onSuggestionClick={onSuggestionClick}
+              party={party}
               showSuggestions={showSuggestions && party.id === activePartyId}
               suggestions={suggestions}
-              onSuggestionClick={onSuggestionClick}
             />
           </div>
         ))}
