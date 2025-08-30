@@ -120,7 +120,7 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3 px-4">
           <PartySelector
             className="px-1"
             onSelectionChange={setSelectedPartyIds}
