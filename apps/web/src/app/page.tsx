@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -34,6 +34,7 @@ const ChatBotDemo = () => {
     message: string;
     timestamp: number;
   } | null>(null);
+  const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(new Set());
 
   // Update selected parties when IDs change
   useEffect(() => {
@@ -66,16 +67,27 @@ const ChatBotDemo = () => {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    if (selectedParties.length > 0) {
-      // Broadcast suggestion to all selected parties
-      setMessageTrigger({
-        message: suggestion,
-        timestamp: Date.now(),
-      });
-    }
+    // Just set the input value, don't send the message
+    setInput(suggestion);
+  };
+
+  const handlePartyMessagesChange = (partyId: string, hasMessages: boolean) => {
+    setPartiesWithMessages(prev => {
+      const newSet = new Set(prev);
+      if (hasMessages) {
+        newSet.add(partyId);
+      } else {
+        newSet.delete(partyId);
+      }
+      return newSet;
+    });
   };
 
   const hasSelectedParties = selectedParties.length > 0;
+  const hasAnyMessages = useMemo(() =>
+    selectedParties.some(party => partiesWithMessages.has(party.id)),
+    [selectedParties, partiesWithMessages]
+  );
 
   return (
     <div className="relative mx-auto size-full h-screen max-w-7xl p-6">
@@ -91,32 +103,18 @@ const ChatBotDemo = () => {
               </div>
             )}
 
-            {/* Suggestion State - when parties selected but no conversations yet */}
+            {/* Party Tabs for conversations */}
             {hasSelectedParties && (
-              <div className="flex h-full flex-col">
-                {/* Show suggestions at the top when no active conversations */}
-                <div className="mb-6 flex flex-col items-center justify-center gap-6">
-                  <Suggestions className="max-w-2xl">
-                    {suggestions.map((suggestion) => (
-                      <Suggestion
-                        key={suggestion}
-                        onClick={handleSuggestionClick}
-                        suggestion={suggestion}
-                      />
-                    ))}
-                  </Suggestions>
-                </div>
-
-                {/* Party Tabs for conversations */}
-                <div className="flex-1">
-                  <PartyTabs
-                    activePartyId={activePartyId}
-                    messageTrigger={messageTrigger}
-                    onTabChange={setActivePartyId}
-                    parties={selectedParties}
-                  />
-                </div>
-              </div>
+              <PartyTabs
+                activePartyId={activePartyId}
+                messageTrigger={messageTrigger}
+                onTabChange={setActivePartyId}
+                parties={selectedParties}
+                onPartyMessagesChange={handlePartyMessagesChange}
+                showSuggestions={!hasAnyMessages}
+                suggestions={suggestions}
+                onSuggestionClick={handleSuggestionClick}
+              />
             )}
           </ConversationContent>
           <ConversationScrollButton />

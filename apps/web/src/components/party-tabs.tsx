@@ -1,6 +1,7 @@
 'use client';
 
 import { PartyCard } from '@/components/party-card';
+import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
@@ -11,6 +12,10 @@ type PartyTabsProps = {
   onTabChange: (partyId: string) => void;
   className?: string;
   messageTrigger?: { message: string; timestamp: number } | null;
+  onPartyMessagesChange?: (partyId: string, hasMessages: boolean) => void;
+  showSuggestions?: boolean;
+  suggestions?: string[];
+  onSuggestionClick?: (suggestion: string) => void;
 };
 
 export function PartyTabs({
@@ -19,6 +24,10 @@ export function PartyTabs({
   onTabChange,
   className,
   messageTrigger,
+  onPartyMessagesChange,
+  showSuggestions = false,
+  suggestions = [],
+  onSuggestionClick,
 }: PartyTabsProps) {
   if (parties.length === 0) {
     return null;
@@ -64,7 +73,14 @@ export function PartyTabs({
                 : 'opacity-0 pointer-events-none'
             )}
           >
-            <PartyCard messageTrigger={messageTrigger} party={party} />
+            <PartyCard 
+              messageTrigger={messageTrigger} 
+              party={party}
+              onMessagesChange={onPartyMessagesChange}
+              showSuggestions={showSuggestions && party.id === activePartyId}
+              suggestions={suggestions}
+              onSuggestionClick={onSuggestionClick}
+            />
           </div>
         ))}
       </div>

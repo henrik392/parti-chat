@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import {
   InlineCitation,
   InlineCitationCard,
@@ -23,6 +23,7 @@ import {
 import { Loader } from '@/components/ai-elements/loader';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Response } from '@/components/ai-elements/response';
+import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -41,12 +42,20 @@ type PartyCardProps = {
   party: Party;
   messageTrigger?: { message: string; timestamp: number } | null;
   className?: string;
+  onMessagesChange?: (partyId: string, hasMessages: boolean) => void;
+  showSuggestions?: boolean;
+  suggestions?: string[];
+  onSuggestionClick?: (suggestion: string) => void;
 };
 
 export function PartyCard({
   party,
   messageTrigger,
   className,
+  onMessagesChange,
+  showSuggestions = false,
+  suggestions = [],
+  onSuggestionClick,
 }: PartyCardProps) {
   const lastProcessedTimestamp = useRef<number | null>(null);
 
@@ -94,8 +103,19 @@ export function PartyCard({
   // Check if we're currently streaming
   const isLoading = status === 'streaming';
 
-  // Check if there are any messages in this conversation
-  const hasMessages = messages.length > 0;
+  // Check if there are any messages in this conversation (memoized to prevent infinite loops)
+  const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
+
+  // Track previous hasMessages state to avoid unnecessary callback calls
+  const prevHasMessagesRef = useRef<boolean>(hasMessages);
+
+  // Notify parent when messages state changes
+  useEffect(() => {
+    if (onMessagesChange && prevHasMessagesRef.current !== hasMessages) {
+      prevHasMessagesRef.current = hasMessages;
+      onMessagesChange(party.id, hasMessages);
+    }
+  }, [hasMessages, party.id, onMessagesChange]);
 
   // Extract citations from response text
   const extractCitationsFromResponse = (text: string): Citation[] => {
@@ -247,6 +267,21 @@ export function PartyCard({
             <p className="text-muted-foreground text-sm">
               Still et spørsmål for å få svar fra {party.name}s partiprogram
             </p>
+
+            {/* Show suggestions when enabled */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="mt-6">
+                <Suggestions className="max-w-md mx-auto">
+                  {suggestions.map((suggestion) => (
+                    <Suggestion
+                      key={suggestion}
+                      onClick={() => onSuggestionClick?.(suggestion)}
+                      suggestion={suggestion}
+                    />
+                  ))}
+                </Suggestions>
+              </div>
+            )}
           </div>
         )}
 
