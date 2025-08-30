@@ -42,27 +42,14 @@ export function PartyCard({
   const { messages, sendMessage, status, error } = useChat({
     transport: {
       async sendMessages(options) {
-        console.log(`[PartyCard Transport] Calling client.chat for ${party.shortName}:`, {
-          partyId: party.id,
-          messagesCount: options.messages.length,
-          messages: options.messages
-        });
-        
-        try {
-          const result = await client.chat(
-            {
-              messages: options.messages,
-              partyId: party.id,
-            },
-            { signal: options.abortSignal }
-          );
-          
-          console.log(`[PartyCard Transport] Got result from server for ${party.shortName}`);
-          return eventIteratorToStream(result);
-        } catch (error) {
-          console.error(`[PartyCard Transport] Error for ${party.shortName}:`, error);
-          throw error;
-        }
+        const result = await client.chat(
+          {
+            messages: options.messages,
+            partyId: party.id,
+          },
+          { signal: options.abortSignal }
+        );
+        return eventIteratorToStream(result);
       },
       reconnectToStream() {
         throw new Error('Unsupported');
@@ -73,13 +60,9 @@ export function PartyCard({
   // Listen for message triggers from parent
   useEffect(() => {
     if (messageTrigger?.message) {
-      console.log(`[PartyCard] Sending message to party: ${party.id} (${party.shortName})`, {
-        message: messageTrigger.message,
-        partyId: party.id
-      });
       sendMessage({ text: messageTrigger.message });
     }
-  }, [messageTrigger, sendMessage, party.id, party.shortName]);
+  }, [messageTrigger, sendMessage]);
 
   // Get the latest assistant message
   const latestResponse = messages

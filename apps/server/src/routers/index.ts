@@ -12,6 +12,7 @@ import { publicProcedure } from '../lib/orpc';
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
 const DEFAULT_SIMILARITY_THRESHOLD = 0.6;
+const MAX_STEPS = 5;
 
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
@@ -91,26 +92,19 @@ export const appRouter = {
   chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
     const { messages, partyId } = input;
 
-    console.log('[Server] Chat request received:', {
-      partyId,
-      messagesCount: messages.length,
-    });
-
     // Find the party information if partyId is provided
-    let party = null;
+    let party: (typeof PARTIES)[number] | null = null;
     if (partyId) {
-      party = PARTIES.find((p) => p.id === partyId);
+      party = PARTIES.find((p) => p.id === partyId) || null;
       if (!party) {
-        console.error('[Server] Party not found!', { partyId });
         throw new Error(`Party not found: ${partyId}`);
       }
-      console.log('[Server] Found party:', { id: party.id, name: party.name });
     }
 
     const result = streamText({
       model: openrouter('openai/gpt-4o-mini'),
       messages: convertToModelMessages(messages),
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(MAX_STEPS),
       system: party
         ? `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
            Bruk verktøyet for å søke etter relevant informasjon i partiprogrammet før du svarer.
@@ -124,21 +118,12 @@ export const appRouter = {
             question: z.string().describe('Brukerens spørsmål'),
           }),
           execute: async ({ question }) => {
-            console.log('[Tool] Getting party information:', {
-              question,
-              partyId,
-            });
-
             try {
               const relevantContent = await findRelevantContent(
                 question,
                 partyId || '',
                 DEFAULT_CONTENT_LIMIT,
                 DEFAULT_SIMILARITY_THRESHOLD
-              );
-
-              console.log(
-                `[Tool] Found ${relevantContent.length} relevant content pieces`
               );
 
               if (relevantContent.length === 0) {
@@ -151,8 +136,7 @@ export const appRouter = {
                     `Fra ${party?.name || 'parti'}programmet${content.chapterTitle ? ` (${content.chapterTitle})` : ''}: ${content.content}`
                 )
                 .join('\n\n');
-            } catch (error) {
-              console.error('[Tool] Error getting party information:', error);
+            } catch (_error) {
               return `Feil ved henting av informasjon fra ${party?.name || 'parti'}programmet.`;
             }
           },

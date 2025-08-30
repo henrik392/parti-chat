@@ -30,7 +30,10 @@ const ChatBotDemo = () => {
   const [selectedPartyIds, setSelectedPartyIds] = useState<string[]>([]);
   const [selectedParties, setSelectedParties] = useState<Party[]>([]);
   const [activePartyId, setActivePartyId] = useState<string>('');
-  const [messageTrigger, setMessageTrigger] = useState<{ message: string; timestamp: number } | null>(null);
+  const [messageTrigger, setMessageTrigger] = useState<{
+    message: string;
+    timestamp: number;
+  } | null>(null);
 
   // Update selected parties when IDs change
   useEffect(() => {
@@ -107,7 +110,8 @@ const ChatBotDemo = () => {
                       Political Party Chat
                     </h2>
                     <p className="mb-6 text-muted-foreground">
-                      Still spørsmål til de valgte partiene for å sammenligne deres standpunkter
+                      Still spørsmål til de valgte partiene for å sammenligne
+                      deres standpunkter
                     </p>
                   </div>
 
@@ -164,13 +168,12 @@ const ChatBotDemo = () => {
                 )}
                 {selectedPartyIds.length > 0 && (
                   <span className="text-muted-foreground text-sm">
-                    Sender til {selectedPartyIds.length} parti{selectedPartyIds.length !== 1 ? 'er' : ''}
+                    Sender til {selectedPartyIds.length} parti
+                    {selectedPartyIds.length !== 1 ? 'er' : ''}
                   </span>
                 )}
               </PromptInputTools>
-              <PromptInputSubmit
-                disabled={!(input && hasSelectedParties)}
-              />
+              <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
             </PromptInputToolbar>
           </PromptInput>
         </div>

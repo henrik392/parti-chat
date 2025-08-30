@@ -55,10 +55,7 @@ export function PartyTabs({
               key={party.id}
               value={party.id}
             >
-              <PartyCard
-                messageTrigger={messageTrigger}
-                party={party}
-              />
+              <PartyCard messageTrigger={messageTrigger} party={party} />
             </TabsContent>
           );
         })}
