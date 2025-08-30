@@ -1,6 +1,6 @@
 import { Root } from '@radix-ui/react-toggle';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { type ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -31,8 +31,7 @@ function Toggle({
   variant,
   size,
   ...props
-}: ComponentProps<typeof Root> &
-  VariantProps<typeof toggleVariants>) {
+}: ComponentProps<typeof Root> & VariantProps<typeof toggleVariants>) {
   return (
     <Root
       className={cn(toggleVariants({ variant, size, className }))}

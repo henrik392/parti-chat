@@ -11,9 +11,9 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input';
+import { EmptyChatState } from '@/components/empty-chat-state';
 import { PartySelector } from '@/components/party-selector';
 import { PartyTabs } from '@/components/party-tabs';
-import { EmptyChatState } from '@/components/empty-chat-state';
 import { PARTIES, type Party } from '@/lib/parties';
 
 const suggestions = [

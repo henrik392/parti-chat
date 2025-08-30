@@ -41,7 +41,7 @@ export function PartyTabs({
           onValueChange={onTabChange}
           value={activePartyId}
         >
-          <TabsList className="scrollbar-hide mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent py-5 px-2 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
+          <TabsList className="scrollbar-hide mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
             {parties.map((party) => {
               const isActive = party.id === activePartyId;
               return (
