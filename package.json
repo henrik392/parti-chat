@@ -24,18 +24,13 @@
     "db:down": "turbo -F server db:down"
   },
   "dependencies": {
-    "pino": "^9.9.0",
-    "pino-pretty": "^13.1.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.2",
-    "@types/pdf-parse": "^1.1.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/uuid": "^10.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.5",
-    "shadcn": "^3.0.0",
     "turbo": "^2.5.6",
     "ultracite": "5.2.5"
   },

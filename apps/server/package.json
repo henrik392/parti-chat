@@ -43,6 +43,8 @@
     "@types/react": "^19.1.12",
     "drizzle-kit": "^0.31.4",
     "typescript": "^5.9.2",
-    "zod": "^4.1.4"
+    "zod": "^4.1.4",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/uuid": "^10.0.0"
   }
 }
