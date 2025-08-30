@@ -95,7 +95,7 @@ export function PartyTabs({
         animate={{
           x: swipeState.isDragging ? swipeState.offset : 0,
         }}
-        className="relative mt-16 flex-1 cursor-grab select-none active:cursor-grabbing sm:mt-20"
+        className="absolute inset-0 top-16 cursor-grab select-none active:cursor-grabbing sm:top-20"
         onPan={handlePan}
         onPanEnd={handlePanEnd}
         onPanStart={handlePanStart}
