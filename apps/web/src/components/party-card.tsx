@@ -271,7 +271,7 @@ export function PartyCard({
             {/* Show suggestions when enabled */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="mt-6">
-                <Suggestions className="max-w-md mx-auto">
+                <Suggestions>
                   {suggestions.map((suggestion) => (
                     <Suggestion
                       key={suggestion}
