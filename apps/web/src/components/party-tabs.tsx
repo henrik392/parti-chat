@@ -37,11 +37,13 @@ export function PartyTabs({
             <TabsTrigger
               className="flex-shrink-0 data-[state=active]:text-white"
               key={party.id}
-              style={{
-                '--tw-bg-opacity': party.id === activePartyId ? '1' : '0',
-                backgroundColor:
-                  party.id === activePartyId ? party.color : undefined,
-              }}
+              style={
+                {
+                  '--tw-bg-opacity': party.id === activePartyId ? '1' : '0',
+                  backgroundColor:
+                    party.id === activePartyId ? party.color : undefined,
+                } as React.CSSProperties
+              }
               value={party.id}
             >
               {party.shortName}

@@ -130,12 +130,43 @@ export const appRouter = {
                 return `Ingen relevant informasjon funnet i ${party?.name || 'parti'}programmet.`;
               }
 
-              return relevantContent
-                .map(
-                  (content: RetrievalResult) =>
-                    `Fra ${party?.name || 'parti'}programmet${content.chapterTitle ? ` (${content.chapterTitle})` : ''}: ${content.content}`
-                )
-                .join('\n\n');
+              // Format content with citation markers
+              let responseText = '';
+              const citations: Array<{
+                content: string;
+                chapterTitle?: string;
+                pageNumber?: number;
+                similarity: number;
+              }> = [];
+
+              relevantContent.forEach((content: RetrievalResult, index) => {
+                const citationNumber = index + 1;
+                citations.push({
+                  content: content.content,
+                  chapterTitle: content.chapterTitle,
+                  pageNumber: content.pageNumber,
+                  similarity: content.similarity,
+                });
+
+                if (index === 0) {
+                  responseText = `Basert på ${party?.name || 'parti'}programmet: ${content.content} [${citationNumber}]`;
+                } else {
+                  responseText += ` Videre står det at ${content.content} [${citationNumber}]`;
+                }
+              });
+
+              // Return structured data that the AI can use to form a response with citations
+              return JSON.stringify({
+                text: responseText,
+                citations: citations.map((citation, index) => ({
+                  id: index + 1,
+                  content: citation.content,
+                  chapterTitle: citation.chapterTitle || 'Ukjent kapittel',
+                  pageNumber: citation.pageNumber,
+                  similarity: citation.similarity,
+                  source: `${party?.name} Partiprogram${citation.pageNumber ? ` - Side ${citation.pageNumber}` : ''}`,
+                })),
+              });
             } catch (_error) {
               return `Feil ved henting av informasjon fra ${party?.name || 'parti'}programmet.`;
             }

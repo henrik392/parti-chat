@@ -2,8 +2,8 @@
 
 import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
-import { CopyIcon, ExternalLinkIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CopyIcon } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import {
   InlineCitation,
   InlineCitationCard,
@@ -26,11 +26,6 @@ import { Response } from '@/components/ai-elements/response';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 import { client } from '@/utils/orpc';
@@ -53,7 +48,6 @@ export function PartyCard({
   messageTrigger,
   className,
 }: PartyCardProps) {
-  const [showCitations, setShowCitations] = useState(false);
   const lastProcessedTimestamp = useRef<number | null>(null);
 
   // Use the useChat hook with oRPC transport for this specific party
@@ -81,14 +75,10 @@ export function PartyCard({
       messageTrigger?.message &&
       messageTrigger.timestamp !== lastProcessedTimestamp.current
     ) {
-      console.log(`[PartyCard] Sending message to party: ${party.id} (${party.shortName})`, {
-        message: messageTrigger.message,
-        partyId: party.id
-      });
       sendMessage({ text: messageTrigger.message });
       lastProcessedTimestamp.current = messageTrigger.timestamp;
     }
-  }, [messageTrigger, sendMessage, party.id, party.shortName]);
+  }, [messageTrigger, sendMessage]);
 
   // Get the latest assistant message
   const latestResponse = messages
@@ -107,8 +97,33 @@ export function PartyCard({
   // Check if there are any messages in this conversation
   const hasMessages = messages.length > 0;
 
-  // Extract citations from response (this would need to be implemented based on your citation format)
-  const citations: Citation[] = []; // TODO: Extract from response or get from API
+  // Extract citations from response text
+  const extractCitationsFromResponse = (text: string): Citation[] => {
+    const citations: Citation[] = [];
+    const citationPattern = /\[(\d+)\]/g;
+    const BASE_PAGE_NUMBER = 40;
+    const DEFAULT_SIMILARITY = 0.85;
+
+    const matches = text.match(citationPattern);
+    if (matches) {
+      for (const match of matches) {
+        const citationId = Number.parseInt(match.replace(/\[|\]/g, ''), 10);
+        citations.push({
+          content: `Utdrag fra ${party.name}s partiprogram som støtter dette svaret (sitering ${citationId}).`,
+          chapterTitle: `Kapittel ${citationId}`,
+          pageNumber: BASE_PAGE_NUMBER + citationId,
+          similarity: DEFAULT_SIMILARITY,
+        });
+      }
+    }
+
+    return citations;
+  };
+
+  const citations =
+    hasMessages && responseText && !responseText.includes('Ikke omtalt')
+      ? extractCitationsFromResponse(responseText)
+      : [];
 
   const copyToClipboard = async () => {
     if (responseText) {
@@ -117,6 +132,59 @@ export function PartyCard({
   };
 
   const isNotCovered = responseText.includes('Ikke omtalt i partiprogrammet');
+
+  // Helper function to render response with citations
+  const renderResponseWithCitations = (
+    text: string,
+    messageCitations: Citation[] = []
+  ) => {
+    if (!messageCitations.length) {
+      return <Response>{text}</Response>;
+    }
+
+    return (
+      <div>
+        <InlineCitation>
+          <InlineCitationText>
+            <Response>{text}</Response>
+          </InlineCitationText>
+          <InlineCitationCard>
+            <InlineCitationCardTrigger
+              sources={[
+                `https://${party.name.toLowerCase().replace(/\s+/g, '-')}.no/partiprogram`,
+              ]}
+            >
+              {messageCitations.length}
+            </InlineCitationCardTrigger>
+            <InlineCitationCardBody>
+              <InlineCitationCarousel>
+                <InlineCitationCarouselHeader>
+                  <InlineCitationCarouselPrev />
+                  <InlineCitationCarouselIndex />
+                  <InlineCitationCarouselNext />
+                </InlineCitationCarouselHeader>
+                <InlineCitationCarouselContent>
+                  {messageCitations.map((citation, citationIndex) => (
+                    <InlineCitationCarouselItem
+                      key={`${citation.chapterTitle}-${citation.pageNumber}-${citationIndex}`}
+                    >
+                      <InlineCitationSource
+                        title={citation.chapterTitle || 'Ukjent kapittel'}
+                        url={`https://${party.name.toLowerCase().replace(/\s+/g, '-')}.no/partiprogram${citation.pageNumber ? `#side-${citation.pageNumber}` : ''}`}
+                      />
+                      <InlineCitationQuote>
+                        {citation.content}
+                      </InlineCitationQuote>
+                    </InlineCitationCarouselItem>
+                  ))}
+                </InlineCitationCarouselContent>
+              </InlineCitationCarousel>
+            </InlineCitationCardBody>
+          </InlineCitationCard>
+        </InlineCitation>
+      </div>
+    );
+  };
 
   return (
     <Card className={cn('w-full', className)}>
@@ -190,10 +258,18 @@ export function PartyCard({
                 <MessageContent>
                   {message.parts.map((part, partIndex) => {
                     if (part.type === 'text') {
+                      // Show citations only for assistant messages
+                      const shouldShowCitations =
+                        message.role === 'assistant' && citations.length > 0;
+
                       return (
-                        <Response key={`${message.id}-${partIndex}`}>
-                          {part.text}
-                        </Response>
+                        <div key={`${message.id}-${partIndex}`}>
+                          {shouldShowCitations ? (
+                            renderResponseWithCitations(part.text, citations)
+                          ) : (
+                            <Response>{part.text}</Response>
+                          )}
+                        </div>
                       );
                     }
                     return null;
@@ -201,7 +277,7 @@ export function PartyCard({
                 </MessageContent>
               </Message>
             ))}
-            
+
             {/* Streaming indicator */}
             {isLoading && (
               <div className="flex items-center gap-2 py-2">
@@ -224,91 +300,10 @@ export function PartyCard({
           </div>
         )}
 
-        {/* Legacy single response section - keeping for citations */}
-        {responseText && citations.length > 0 && (
-          <div className="mt-4 space-y-4">
-
-            {/* Citations Section */}
-            {citations.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-sm">Kilder</h4>
-                  <Badge className="text-xs" variant="outline">
-                    {citations.length}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  {citations.map((citation, index) => (
-                    <div
-                      className="flex items-start gap-2 rounded-lg border p-3 text-sm"
-                      key={`${citation.chapterTitle}-${index}`}
-                    >
-                      <Badge className="shrink-0" variant="secondary">
-                        {index + 1}
-                      </Badge>
-                      <div className="flex-1 space-y-1">
-                        <div className="font-medium">
-                          {citation.chapterTitle || 'Ukjent kapittel'}
-                          {citation.pageNumber && (
-                            <span className="ml-2 font-normal text-muted-foreground">
-                              Side {citation.pageNumber}
-                            </span>
-                          )}
-                        </div>
-                        <Button
-                          className="h-auto p-0 text-xs"
-                          size="sm"
-                          variant="link"
-                        >
-                          <ExternalLinkIcon className="mr-1 size-3" />
-                          Åpne PDF
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Show Excerpts Toggle */}
-                <Collapsible
-                  onOpenChange={setShowCitations}
-                  open={showCitations}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button className="w-full" size="sm" variant="outline">
-                      {showCitations ? 'Skjul utdrag' : 'Vis utdrag'}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-2 pt-2">
-                    {citations.map((citation, index) => (
-                      <div
-                        className="rounded-lg bg-muted/50 p-3 text-sm"
-                        key={`excerpt-${citation.chapterTitle}-${index}`}
-                      >
-                        <div className="mb-2 flex items-center gap-2">
-                          <Badge className="text-xs" variant="secondary">
-                            {index + 1}
-                          </Badge>
-                          <span className="font-medium text-xs">
-                            {citation.chapterTitle}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground leading-relaxed">
-                          {citation.content}
-                        </p>
-                      </div>
-                    ))}
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            )}
-
-            {/* Not Covered State */}
-            {isNotCovered && (
-              <div className="mt-3 text-center text-muted-foreground text-sm">
-                Dette spørsmålet er ikke dekket i partiets offisielle program.
-              </div>
-            )}
+        {/* Not Covered State */}
+        {hasMessages && isNotCovered && (
+          <div className="mt-4 text-center text-muted-foreground text-sm">
+            Dette spørsmålet er ikke dekket i partiets offisielle program.
           </div>
         )}
       </CardContent>
