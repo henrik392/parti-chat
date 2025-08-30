@@ -90,7 +90,7 @@ const ChatBotDemo = () => {
   );
 
   return (
-    <div className="relative mx-auto size-full h-screen max-w-7xl p-6">
+    <div className="relative mx-auto size-full h-screen max-w-6xl p-2 sm:p-6">
       <div className="flex h-full flex-col">
         <Conversation className="h-full">
           <ConversationContent>
@@ -120,9 +120,9 @@ const ChatBotDemo = () => {
           <ConversationScrollButton />
         </Conversation>
 
-        <div className="mt-4 space-y-3 px-4">
+        <div className="mt-4 space-y-3 px-2 sm:px-4">
           <PartySelector
-            className="px-1"
+            className="px-0 sm:px-1"
             onSelectionChange={setSelectedPartyIds}
             selectedPartyIds={selectedPartyIds}
           />

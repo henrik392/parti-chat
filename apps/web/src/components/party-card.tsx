@@ -26,7 +26,6 @@ import { Response } from '@/components/ai-elements/response';
 import { Suggestion, Suggestions } from '@/components/ai-elements/suggestion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 import { client } from '@/utils/orpc';
@@ -207,11 +206,10 @@ export function PartyCard({
   };
 
   return (
-    <Card className={cn('w-full', className)}>
-      <CardHeader className="pb-4">
+    <div className={cn('w-full space-y-4', className)}>
+      <div className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {/* Party Logo Placeholder */}
             <div
               className="flex size-10 items-center justify-center rounded-full font-semibold text-sm text-white"
               style={{ backgroundColor: party.color }}
@@ -219,7 +217,7 @@ export function PartyCard({
               {party.shortName}
             </div>
             <div>
-              <h3 className="font-semibold text-lg">{party.name}</h3>
+              <h3 className="font-semibold text-lg m-0 leading-tight">{party.name}</h3>
               <Badge
                 className="mt-1"
                 style={{
@@ -232,7 +230,6 @@ export function PartyCard({
               </Badge>
             </div>
           </div>
-
           {responseText && !isLoading && (
             <Button
               className="shrink-0"
@@ -244,31 +241,28 @@ export function PartyCard({
             </Button>
           )}
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent>
-        {/* Error State */}
-        {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
-            Feil ved henting av svar: {error.message || 'Ukjent feil'}
+      {/* Error State */}
+      {error && (
+        <div className="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
+          Feil ved henting av svar: {error.message || 'Ukjent feil'}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!(hasMessages || isLoading || error) && (
+        <div className="py-8 text-center">
+          <div
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full font-bold text-white text-xl"
+            style={{ backgroundColor: party.color }}
+          >
+            {party.shortName}
           </div>
-        )}
-
-        {/* Empty State */}
-        {!(hasMessages || isLoading || error) && (
-          <div className="py-8 text-center">
-            <div
-              className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full font-bold text-white text-xl"
-              style={{ backgroundColor: party.color }}
-            >
-              {party.shortName}
-            </div>
             <h3 className="mb-2 font-medium text-lg">{party.name}</h3>
             <p className="text-muted-foreground text-sm">
               Still et spørsmål for å få svar fra {party.name}s partiprogram
             </p>
-
-            {/* Show suggestions when enabled */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="mt-6">
                 <Suggestions>
@@ -282,66 +276,59 @@ export function PartyCard({
                 </Suggestions>
               </div>
             )}
-          </div>
-        )}
+        </div>
+      )}
 
-        {/* Conversation Messages */}
-        {hasMessages && (
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <Message from={message.role} key={message.id}>
-                <MessageContent>
-                  {message.parts.map((part, partIndex) => {
-                    if (part.type === 'text') {
-                      // Show citations only for assistant messages
-                      const shouldShowCitations =
-                        message.role === 'assistant' && citations.length > 0;
+      {/* Conversation Messages */}
+      {hasMessages && (
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <Message from={message.role} key={message.id}>
+              <MessageContent>
+                {message.parts.map((part, partIndex) => {
+                  if (part.type === 'text') {
+                    const shouldShowCitations =
+                      message.role === 'assistant' && citations.length > 0;
+                    return (
+                      <div key={`${message.id}-${partIndex}`}>
+                        {shouldShowCitations ? (
+                          renderResponseWithCitations(part.text, citations)
+                        ) : (
+                          <Response>{part.text}</Response>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+              </MessageContent>
+            </Message>
+          ))}
+          {isLoading && (
+            <div className="flex items-center gap-2 py-2">
+              <Loader />
+              <span className="text-muted-foreground text-sm">
+                {party.shortName} svarer...
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
-                      return (
-                        <div key={`${message.id}-${partIndex}`}>
-                          {shouldShowCitations ? (
-                            renderResponseWithCitations(part.text, citations)
-                          ) : (
-                            <Response>{part.text}</Response>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </MessageContent>
-              </Message>
-            ))}
+      {isLoading && !hasMessages && (
+        <div className="flex items-center gap-2 py-8">
+          <Loader />
+          <span className="text-muted-foreground text-sm">
+            Henter svar fra {party.shortName}...
+          </span>
+        </div>
+      )}
 
-            {/* Streaming indicator */}
-            {isLoading && (
-              <div className="flex items-center gap-2 py-2">
-                <Loader />
-                <span className="text-muted-foreground text-sm">
-                  {party.shortName} svarer...
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Loading State for first message */}
-        {isLoading && !hasMessages && (
-          <div className="flex items-center gap-2 py-8">
-            <Loader />
-            <span className="text-muted-foreground text-sm">
-              Henter svar fra {party.shortName}...
-            </span>
-          </div>
-        )}
-
-        {/* Not Covered State */}
-        {hasMessages && isNotCovered && (
-          <div className="mt-4 text-center text-muted-foreground text-sm">
-            Dette spørsmålet er ikke dekket i partiets offisielle program.
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {hasMessages && isNotCovered && (
+        <div className="mt-4 text-center text-muted-foreground text-sm">
+          Dette spørsmålet er ikke dekket i partiets offisielle program.
+        </div>
+      )}
+    </div>
   );
 }

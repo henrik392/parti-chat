@@ -40,8 +40,8 @@ export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = 'What would you like to know?',
-  minHeight = 48,
-  maxHeight = 164,
+  minHeight = 40,
+  maxHeight = 140,
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
@@ -68,8 +68,8 @@ export const PromptInputTextarea = ({
   return (
     <Textarea
       className={cn(
-        'w-full resize-none rounded-none border-none p-3 shadow-none outline-none ring-0',
-        'field-sizing-content max-h-[6lh] bg-transparent dark:bg-transparent',
+        'w-full resize-none rounded-none border-none px-3 py-2 shadow-none outline-none ring-0 text-sm',
+        'field-sizing-content max-h-[5lh] bg-transparent dark:bg-transparent',
         'focus-visible:ring-0',
         className
       )}
@@ -91,7 +91,7 @@ export const PromptInputToolbar = ({
   ...props
 }: PromptInputToolbarProps) => (
   <div
-    className={cn('flex items-center justify-between p-1', className)}
+    className={cn('flex items-center justify-between px-2 py-1 gap-2', className)}
     {...props}
   />
 );
@@ -104,7 +104,7 @@ export const PromptInputTools = ({
 }: PromptInputToolsProps) => (
   <div
     className={cn(
-      'flex items-center gap-1',
+      'flex items-center gap-2 min-h-0',
       '[&_button:first-child]:rounded-bl-xl',
       className
     )}
@@ -163,7 +163,7 @@ export const PromptInputSubmit = ({
 
   return (
     <Button
-      className={cn('gap-1.5 rounded-lg', className)}
+      className={cn('gap-1.5 rounded-lg h-8 w-8', className)}
       size={size}
       type="submit"
       variant={variant}

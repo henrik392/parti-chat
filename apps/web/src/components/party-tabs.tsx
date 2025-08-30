@@ -36,16 +36,16 @@ export function PartyTabs({
   return (
     <div className={cn('flex h-full w-full flex-col', className)}>
       {/* Tab Navigation - Fixed */}
-      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50 bg-background max-w-7xl w-[calc(100vw-3rem)]">
+      <div className="fixed top-2 sm:top-6 left-1/2 transform -translate-x-1/2 z-50 bg-background max-w-7xl w-[calc(100vw-1rem)] sm:w-[calc(100vw-3rem)]">
         <Tabs
           className="flex flex-col"
           onValueChange={onTabChange}
           value={activePartyId}
         >
-          <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto">
+          <TabsList className="scrollbar-hide w-full justify-start overflow-x-auto border-none shadow-sm rounded-lg p-1 bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/50">
             {parties.map((party) => (
               <TabsTrigger
-                className="flex-shrink-0 data-[state=active]:text-white"
+                className="flex-shrink-0 data-[state=active]:text-white data-[state=active]:shadow-sm"
                 key={party.id}
                 style={
                   {
@@ -64,7 +64,7 @@ export function PartyTabs({
       </div>
 
       {/* Party Cards - All rendered but only active one visible */}
-      <div className="mt-20 flex-1 relative">
+      <div className="mt-16 sm:mt-20 flex-1 relative">
         {parties.map((party) => (
           <div
             key={party.id}
