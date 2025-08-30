@@ -1,0 +1,60 @@
+name: parti-chat
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: parti-chat-postgres
+    environment:
+      POSTGRES_DB: parti-chat
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - ../files/postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - parti-chat-network
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: parti-chat-server
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/parti-chat
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3001}
+      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - parti-chat-network
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: parti-chat-web
+    environment:
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL:-http://server:3001}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - parti-chat-network
+
+networks:
+  parti-chat-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
