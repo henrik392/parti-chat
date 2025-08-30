@@ -31,12 +31,12 @@ export const MessageContent = ({
       'flex flex-col gap-2 overflow-hidden rounded-3xl px-5 py-4 text-foreground text-sm backdrop-blur-sm transition-all duration-200',
       // User messages - modern gradient with subtle glow
       'group-[.is-user]:bg-gradient-to-br group-[.is-user]:from-blue-500 group-[.is-user]:to-blue-600',
-      'group-[.is-user]:text-white group-[.is-user]:shadow-lg group-[.is-user]:shadow-blue-500/25',
+      'group-[.is-user]:text-white group-[.is-user]:shadow-blue-500/25 group-[.is-user]:shadow-lg',
       'group-[.is-user]:rounded-br-lg group-[.is-user]:border group-[.is-user]:border-blue-400/20',
       // Assistant messages - clean with subtle elevation
       'group-[.is-assistant]:bg-white/95 group-[.is-assistant]:text-gray-800',
       'group-[.is-assistant]:border group-[.is-assistant]:border-gray-200/80',
-      'group-[.is-assistant]:rounded-bl-lg group-[.is-assistant]:shadow-lg group-[.is-assistant]:shadow-gray-900/5',
+      'group-[.is-assistant]:rounded-bl-lg group-[.is-assistant]:shadow-gray-900/5 group-[.is-assistant]:shadow-lg',
       'group-[.is-assistant]:ring-1 group-[.is-assistant]:ring-gray-100',
       // Hover effects
       'group-hover:scale-[1.01] group-hover:shadow-xl',

@@ -1,7 +1,9 @@
 'use client';
 
+import { motion } from 'motion/react';
 import { PartyCard } from '@/components/party-card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useSwipeNavigation } from '@/hooks/use-swipe-navigation';
 import type { Party } from '@/lib/parties';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +19,13 @@ type PartyTabsProps = {
   onSuggestionClick?: (suggestion: string) => void;
 };
 
+const INACTIVE_SCALE = 0.95;
+const DRAG_STIFFNESS = 400;
+const NORMAL_STIFFNESS = 300;
+const DRAG_DAMPING = 40;
+const NORMAL_DAMPING = 30;
+const SPRING_MASS = 0.8;
+
 export function PartyTabs({
   parties,
   activePartyId,
@@ -28,6 +37,19 @@ export function PartyTabs({
   suggestions = [],
   onSuggestionClick,
 }: PartyTabsProps) {
+  const activeIndex = parties.findIndex((party) => party.id === activePartyId);
+
+  const { handlePanStart, handlePan, handlePanEnd, swipeState } =
+    useSwipeNavigation({
+      activeIndex,
+      totalItems: parties.length,
+      onIndexChange: (newIndex) => {
+        if (parties[newIndex]) {
+          onTabChange(parties[newIndex].id);
+        }
+      },
+    });
+
   if (parties.length === 0) {
     return null;
   }
@@ -41,7 +63,7 @@ export function PartyTabs({
           onValueChange={onTabChange}
           value={activePartyId}
         >
-          <TabsList className="scrollbar-hide mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
+          <TabsList className="scrollbar-hide relative mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
             {parties.map((party) => {
               const isActive = party.id === activePartyId;
               return (
@@ -68,17 +90,49 @@ export function PartyTabs({
         </Tabs>
       </div>
 
-      {/* Party Cards - All rendered but only active one visible */}
-      <div className="relative mt-16 flex-1 sm:mt-20">
+      {/* Party Cards - All rendered but only active one visible with swipe support */}
+      <motion.div
+        animate={{
+          x: swipeState.isDragging ? swipeState.offset : 0,
+        }}
+        className="relative mt-16 flex-1 cursor-grab select-none active:cursor-grabbing sm:mt-20"
+        onPan={handlePan}
+        onPanEnd={handlePanEnd}
+        onPanStart={handlePanStart}
+        style={{
+          touchAction: 'pan-y pinch-zoom',
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: swipeState.isDragging ? DRAG_STIFFNESS : NORMAL_STIFFNESS,
+          damping: swipeState.isDragging ? DRAG_DAMPING : NORMAL_DAMPING,
+          mass: SPRING_MASS,
+        }}
+      >
         {parties.map((party) => (
-          <div
+          <motion.div
+            animate={{
+              opacity: party.id === activePartyId ? 1 : 0,
+              scale: party.id === activePartyId ? 1 : INACTIVE_SCALE,
+            }}
             className={cn(
-              'absolute inset-0 transition-opacity duration-200',
+              'absolute inset-0',
               party.id === activePartyId
-                ? 'pointer-events-auto opacity-100'
-                : 'pointer-events-none opacity-0'
+                ? 'pointer-events-auto'
+                : 'pointer-events-none'
             )}
+            initial={false}
             key={party.id}
+            style={{
+              // Ensure the entire area is draggable, not just the content
+              touchAction: 'pan-y pinch-zoom',
+            }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 30,
+              duration: 0.2,
+            }}
           >
             <PartyCard
               messageTrigger={messageTrigger}
@@ -88,9 +142,9 @@ export function PartyTabs({
               showSuggestions={showSuggestions && party.id === activePartyId}
               suggestions={suggestions}
             />
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

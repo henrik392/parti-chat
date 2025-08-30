@@ -11,7 +11,7 @@ export const Response = memo(
     <Streamdown
       className={cn(
         'size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
-        'prose prose-sm max-w-none prose-gray',
+        'prose prose-sm prose-gray max-w-none',
         // Fix bullet point positioning and styling
         '[&_ul]:!pl-6 [&_ol]:!pl-6',
         '[&_ul_li]:!ml-0 [&_ol_li]:!ml-0 [&_li]:!pl-0',

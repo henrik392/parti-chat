@@ -176,11 +176,11 @@ export const PromptInputSubmit = ({
   return (
     <Button
       className={cn(
-        'h-10 w-10 gap-1.5 rounded-full shrink-0',
+        'h-10 w-10 shrink-0 gap-1.5 rounded-full',
         'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
-        'text-white border-0 shadow-lg shadow-blue-500/25',
-        'hover:shadow-xl hover:shadow-blue-500/35 hover:scale-105',
-        'active:scale-95 transition-all duration-200',
+        'border-0 text-white shadow-blue-500/25 shadow-lg',
+        'hover:scale-105 hover:shadow-blue-500/35 hover:shadow-xl',
+        'transition-all duration-200 active:scale-95',
         'disabled:from-gray-400 disabled:to-gray-500 disabled:shadow-gray-400/25',
         className
       )}
