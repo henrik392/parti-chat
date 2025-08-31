@@ -70,9 +70,38 @@ export async function findRelevantContent(
   minSimilarity = 0.3
 ): Promise<RetrievalResult[]> {
   try {
+    console.log(
+      `[RAG] Finding content for party: "${partyShortName}", query: "${query}"`
+    );
+
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
+    // First check: How many results WITHOUT party filter?
+    const allResults = await db
+      .select({
+        content: embeddings.content,
+        similarity,
+        chapterTitle: embeddings.chapterTitle,
+        pageNumber: embeddings.pageNumber,
+        partyProgramId: embeddings.partyProgramId,
+        programPartyId: partyPrograms.partyId,
+        partyShortName: parties.shortName,
+      })
+      .from(embeddings)
+      .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
+      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
+      .where(gt(similarity, minSimilarity))
+      .orderBy(desc(similarity))
+      .limit(20);
+
+    console.log(`[RAG] Found ${allResults.length} total results without party filter`);
+    if (allResults.length > 0) {
+      console.log(`[RAG] Available parties in results:`, allResults.map(r => r.partyShortName).slice(0, 10));
+      console.log(`[RAG] Best match (any party): similarity=${allResults[0]?.similarity}, party="${allResults[0]?.partyShortName}"`);
+    }
+
+    // Now the filtered results
     const results = await db
       .select({
         content: embeddings.content,
@@ -81,18 +110,29 @@ export async function findRelevantContent(
         pageNumber: embeddings.pageNumber,
         partyProgramId: embeddings.partyProgramId,
         programPartyId: partyPrograms.partyId,
+        partyShortName: parties.shortName,
       })
       .from(embeddings)
       .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
       .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
       .where(
         and(
-          gt(similarity, minSimilarity)
-          // sql`lower(${parties.shortName}) = lower(${partyShortName})`
+          gt(similarity, minSimilarity),
+          sql`lower(${parties.shortName}) = lower(${partyShortName})`
         )
       )
       .orderBy(desc(similarity))
       .limit(limit);
+
+    console.log(
+      `[RAG] Found ${results.length} results with similarity > ${minSimilarity}`
+    );
+
+    if (results.length > 0) {
+      console.log(
+        `[RAG] Best match: similarity=${results[0]?.similarity}, party="${results[0]?.partyShortName}"`
+      );
+    }
 
     return results.map((result) => ({
       content: result.content,
@@ -100,7 +140,15 @@ export async function findRelevantContent(
       chapterTitle: result.chapterTitle || undefined,
       pageNumber: result.pageNumber || undefined,
     }));
-  } catch (_error) {
-    throw new Error('RAG search failed');
+  } catch (error) {
+    console.error('[RAG] Error in findRelevantContent:', {
+      query,
+      partyShortName,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw new Error(
+      `RAG search failed for party "${partyShortName}": ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }

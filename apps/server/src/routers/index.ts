@@ -119,6 +119,10 @@ export const appRouter = {
           }),
           execute: async ({ question }) => {
             try {
+              console.log(
+                `[ROUTER] Executing getPartyInformation for party: "${partyShortName}", question: "${question}"`
+              );
+
               const relevantContent = await findRelevantContent(
                 question,
                 partyShortName || '',
