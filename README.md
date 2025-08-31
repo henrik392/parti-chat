@@ -13,10 +13,6 @@ Parti-Chat allows users to:
 
 All responses are in Norwegian Bokmål and strictly grounded in official party program documents.
 
-## 🚨 Development Note
-
-**The latest commit contains a temporary `as any` type cast fix in `apps/web/src/utils/orpc.ts`. This should be properly fixed by implementing correct ORPC client types or using a shared types package before production deployment.**
-
 ## Tech Stack
 
 - **Frontend**: Next.js 15, React 19, TailwindCSS, shadcn/ui
@@ -88,9 +84,4 @@ parti-chat/
 - `bun run ingest:parties` - Process party program PDFs
 
 ## Deployment
-
 The app is designed for deployment on platforms like Dokploy, Railway, or Vercel with separate services for frontend, backend, and PostgreSQL database.
-
-## Contributing
-
-Built with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack). See [PRD.md](./PRD.md) for detailed product requirements and specifications.
