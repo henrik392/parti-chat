@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -19,8 +19,8 @@ import { PARTIES, type Party } from '@/lib/parties';
 const suggestions = [
   'Hva er partiets syn på klimapolitikk?',
   'Hvordan skal Norge håndtere innvandring?',
-  'Hvilken økonomisk politikk fører partiet?',
-  'Hva mener partiet om skattepolitikk?',
+  'Hva gjør partiet med økende levekostnader?',
+  'Hva mener partiet om formuesskatt?',
 ];
 
 const ChatBotDemo = () => {
@@ -37,7 +37,6 @@ const ChatBotDemo = () => {
   const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(
     new Set()
   );
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update selected parties when short names change
   useEffect(() => {
@@ -73,12 +72,13 @@ const ChatBotDemo = () => {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Just set the input value, don't send the message
-    setInput(suggestion);
-    // Focus the input after setting the suggestion
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+    if (selectedParties.length > 0) {
+      // Send the message immediately
+      setMessageTrigger({
+        message: suggestion,
+        timestamp: Date.now(),
+      });
+    }
   };
 
   const handlePartyMessagesChange = (
@@ -149,7 +149,6 @@ const ChatBotDemo = () => {
                   }
                   return 'Still spørsmål';
                 })()}
-                ref={inputRef}
                 value={input}
               />
               <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
