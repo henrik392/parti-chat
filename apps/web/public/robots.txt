@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: /sitemap.xml
+
+# Crawl-delay for bots (be nice to servers)
+Crawl-delay: 1
