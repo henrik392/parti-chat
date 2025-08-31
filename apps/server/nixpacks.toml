@@ -1,25 +1,19 @@
-# Nixpacks configuration for parti-chat API server
-[variables]
-NIXPACKS_BUILD_SYSTEM = "bun"
-NODE_ENV = "production"
-PORT = "3001"
-
 [phases.setup]
-nixPkgs = ["bun", "nodejs_20", "python3", "postgresql"]
+nixPkgs = ["nodejs", "bun"]
 
 [phases.install]
-# Install dependencies from the root of the monorepo
 cmds = [
-    "bun install --frozen-lockfile"
+  "bun install --frozen-lockfile"
 ]
 
 [phases.build]
 cmds = [
-    "bun run build",
-    "echo 'API server build completed'",
-    "ls -la apps/server/.next/"
+  "bun run build"
 ]
 
 [start]
-# Start the API server
 cmd = "bun run start"
+
+[variables]
+NODE_ENV = "production"
+PORT = "3001"
