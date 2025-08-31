@@ -104,7 +104,7 @@ export const appRouter = {
     }
 
     const result = streamText({
-      model: openrouter('openai/gpt-5-nano'),
+      model: openrouter('openai/gpt-5-mini'),
       messages: convertToModelMessages(messages),
       stopWhen: stepCountIs(MAX_STEPS),
       providerOptions: {
