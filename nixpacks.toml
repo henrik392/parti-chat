@@ -1,27 +1,22 @@
-# Nixpacks configuration for parti-chat monorepo - full-stack
+# Nixpacks configuration for parti-chat web app
 [variables]
 NIXPACKS_BUILD_SYSTEM = "bun"
 NODE_ENV = "production"
-WEB_PORT = "3000"
-SERVER_PORT = "3001"
+PORT = "3000"
 
 [phases.setup]
 nixPkgs = ["bun", "nodejs_20", "python3", "postgresql"]
 
 [phases.install]
-cmds = [
-    "bun install --frozen-lockfile",
-    "bun add -g pm2"
-]
+cmds = ["bun install --frozen-lockfile"]
 
 [phases.build]
 cmds = [
-    "bun run build",
-    "echo 'Build completed, checking builds...'",
-    "ls -la apps/server/.next/",
+    "bun run build --filter=web",
+    "echo 'Web app build completed'",
     "ls -la apps/web/.next/"
 ]
 
 [start]
-# Start both applications with PM2
-cmd = "pm2-runtime start ecosystem.config.js"
+# Start the web app
+cmd = "cd apps/web && bun run start"
