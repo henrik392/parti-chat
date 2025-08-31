@@ -3,7 +3,7 @@ import { RPCLink } from '@orpc/client/fetch';
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { QueryCache, QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-// Temporary fix for Docker build - avoid cross-package imports
+import type { AppRouterClient } from '../../../server/src/routers/index';
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -30,6 +30,6 @@ export const link = new RPCLink({
   },
 });
 
-export const client = createORPCClient(link) as any;
+export const client: AppRouterClient = createORPCClient(link);
 
 export const orpc = createTanstackQueryUtils(client);
