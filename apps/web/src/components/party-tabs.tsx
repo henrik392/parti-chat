@@ -68,13 +68,13 @@ export function PartyTabs({
           onValueChange={onTabChange}
           value={activePartyShortName}
         >
-          <TabsList className="scrollbar-hide relative mx-auto w-fit max-w-full justify-center gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30">
+          <TabsList className="scrollbar-hide relative mx-auto flex w-fit min-w-0 max-w-full justify-start gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30 sm:justify-center">
             {parties.map((party) => {
               const isActive = party.shortName === activePartyShortName;
               return (
                 <TabsTrigger
                   className={cn(
-                    'h-8 flex-shrink-0 rounded-full px-8 text-sm transition-colors data-[state=active]:text-white data-[state=active]:shadow-sm',
+                    'h-8 flex-shrink-0 rounded-full px-3 text-sm transition-colors data-[state=active]:text-white data-[state=active]:shadow-sm sm:px-8',
                     'hover:bg-foreground/10 data-[state=active]:hover:brightness-110'
                   )}
                   key={party.shortName}
