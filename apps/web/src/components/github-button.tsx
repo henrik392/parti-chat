@@ -1,5 +1,6 @@
 'use client';
 
+import posthog from 'posthog-js';
 import { Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -52,6 +53,12 @@ export function GitHubButton() {
       href={REPO_URL}
       rel="noopener noreferrer"
       target="_blank"
+      onClick={() => {
+        posthog.capture('github_button_clicked', {
+          repo_url: REPO_URL,
+          stars_count: stars,
+        });
+      }}
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary/20">
         <svg

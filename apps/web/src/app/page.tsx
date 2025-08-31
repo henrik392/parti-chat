@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
+import posthog from 'posthog-js';
 import {
   Conversation,
   ConversationContent,
@@ -62,10 +63,17 @@ const ChatBotDemo = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && selectedParties.length > 0) {
+    const trimmedInput = input.trim();
+    if (trimmedInput && selectedParties.length > 0) {
+      posthog.capture('question_submitted', {
+        question: trimmedInput,
+        selected_parties: selectedPartyShortNames,
+        party_count: selectedPartyShortNames.length,
+        submission_method: 'manual',
+      });
       // Broadcast message to all selected parties by updating the trigger
       setMessageTrigger({
-        message: input.trim(),
+        message: trimmedInput,
         timestamp: Date.now(),
       });
       setInput('');
@@ -74,6 +82,12 @@ const ChatBotDemo = () => {
 
   const handleSuggestionClick = (suggestion: string) => {
     if (selectedParties.length > 0) {
+      posthog.capture('question_submitted', {
+        question: suggestion,
+        selected_parties: selectedPartyShortNames,
+        party_count: selectedPartyShortNames.length,
+        submission_method: 'suggestion',
+      });
       // Send the message immediately
       setMessageTrigger({
         message: suggestion,
@@ -132,7 +146,13 @@ const ChatBotDemo = () => {
         <div className="space-y-3 px-2 pt-4 sm:px-4">
           <PartySelector
             className="px-0 sm:px-1"
-            onSelectionChange={setSelectedPartyShortNames}
+            onSelectionChange={(names) => {
+              posthog.capture('parties_selection_changed', {
+                selected_parties: names,
+                party_count: names.length,
+              });
+              setSelectedPartyShortNames(names);
+            }}
             selectedPartyShortNames={selectedPartyShortNames}
           />
 
