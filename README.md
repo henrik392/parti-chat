@@ -1,6 +1,6 @@
 # Parti-Chat
 
-A multi-party political Q&A chat application that provides neutral, side-by-side answers from Norwegian political parties based on their official party programs.
+A multi-party political Q&A chat application that provides neutral, side-by-side answers from Norwegian political parties based on their official party programs. Check it out at https://partichat.no/
 
 ## Overview
 
