@@ -7,7 +7,7 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
 } from 'react';
-import { Children, forwardRef, useRef } from 'react';
+import { Children, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,

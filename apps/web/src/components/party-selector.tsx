@@ -110,12 +110,12 @@ export function PartySelector({
             </ToggleGroupItem>
           );
         })}
+        {selectedPartyShortNames.length > 0 && (
+          <Badge className="h-8 rounded-full px-3 text-xs" variant="secondary">
+            {selectedPartyShortNames.length} valgt
+          </Badge>
+        )}
       </ToggleGroup>
-      {selectedPartyShortNames.length > 0 && (
-        <Badge className="h-8 rounded-full px-3 text-xs" variant="secondary">
-          {selectedPartyShortNames.length} valgt
-        </Badge>
-      )}
     </div>
   );
 }

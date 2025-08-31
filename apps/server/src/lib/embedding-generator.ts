@@ -70,10 +70,6 @@ export async function findRelevantContent(
   minSimilarity = 0.3
 ): Promise<RetrievalResult[]> {
   try {
-    console.log(
-      `[RAG] Finding content for party: "${partyShortName}", query: "${query}"`
-    );
-
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
@@ -94,18 +90,7 @@ export async function findRelevantContent(
       .where(gt(similarity, minSimilarity))
       .orderBy(desc(similarity))
       .limit(20);
-
-    console.log(
-      `[RAG] Found ${allResults.length} total results without party filter`
-    );
     if (allResults.length > 0) {
-      console.log(
-        '[RAG] Available parties in results:',
-        allResults.map((r) => r.partyShortName).slice(0, 10)
-      );
-      console.log(
-        `[RAG] Best match (any party): similarity=${allResults[0]?.similarity}, party="${allResults[0]?.partyShortName}"`
-      );
     }
 
     // Now the filtered results
@@ -131,14 +116,7 @@ export async function findRelevantContent(
       .orderBy(desc(similarity))
       .limit(limit);
 
-    console.log(
-      `[RAG] Found ${results.length} results with similarity > ${minSimilarity}`
-    );
-
     if (results.length > 0) {
-      console.log(
-        `[RAG] Best match: similarity=${results[0]?.similarity}, party="${results[0]?.partyShortName}"`
-      );
     }
 
     return results.map((result) => ({
@@ -148,12 +126,6 @@ export async function findRelevantContent(
       pageNumber: result.pageNumber || undefined,
     }));
   } catch (error) {
-    console.error('[RAG] Error in findRelevantContent:', {
-      query,
-      partyShortName,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-    });
     throw new Error(
       `RAG search failed for party "${partyShortName}": ${error instanceof Error ? error.message : 'Unknown error'}`
     );

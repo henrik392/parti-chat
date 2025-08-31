@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Conversation,
@@ -154,6 +155,25 @@ const ChatBotDemo = () => {
               <PromptInputSubmit disabled={!(input && hasSelectedParties)} />
             </div>
           </PromptInput>
+
+          {/* Attribution */}
+          <div className="flex justify-center pb-1 sm:pt-2">
+            <a
+              className="flex items-center gap-2 text-muted-foreground text-xs transition-colors hover:text-foreground"
+              href="https://henrikkvamme.no"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <Image
+                alt="Henrik Kvamme Logo"
+                className="h-4 w-4"
+                height={16}
+                src="https://raw.githubusercontent.com/henrik392/portfolio/refs/heads/main/apps/web/public/images/logo-black.png"
+                width={16}
+              />
+              <span className="font-mono">Laget av Henrik Kvamme</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>

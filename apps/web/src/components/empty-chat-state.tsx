@@ -3,6 +3,7 @@
 // Outer Card removed per request – keeping lightweight layout
 import { AlertCircle, BookOpen, Info, ShieldCheck, Users2 } from 'lucide-react';
 import type { ComponentProps } from 'react';
+import { GitHubButton } from '@/components/github-button';
 import { cn } from '@/lib/utils';
 
 type EmptyChatStateProps = {
@@ -51,6 +52,7 @@ export function EmptyChatState({ className, ...props }: EmptyChatStateProps) {
             title="Nøytralt"
           />
         </div>
+
         <div
           aria-label="Advarsel om mulig feil"
           className="relative mt-4 overflow-hidden rounded-md border border-yellow-300/60 bg-yellow-50 py-4 pr-4 pl-5 text-left shadow-sm backdrop-blur before:absolute before:inset-y-0 before:left-0 before:w-2 before:bg-yellow-400 supports-[backdrop-filter]:backdrop-blur-sm"
@@ -67,6 +69,13 @@ export function EmptyChatState({ className, ...props }: EmptyChatStateProps) {
                 informasjon mot original partiprogramtekst.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* GitHub Link */}
+        <div className="mt-6 flex justify-center">
+          <div className="inline-flex">
+            <GitHubButton />
           </div>
         </div>
       </div>
