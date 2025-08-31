@@ -3,7 +3,7 @@
 import { useChat } from '@ai-sdk/react';
 import { eventIteratorToStream } from '@orpc/client';
 import { CopyIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader } from '@/components/ai-elements/loader';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Response } from '@/components/ai-elements/response';
@@ -34,6 +34,7 @@ export function PartyCard({
   onSuggestionClick,
 }: PartyCardProps) {
   const lastProcessedTimestamp = useRef<number | null>(null);
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
   // Use the useChat hook with oRPC transport for this specific party
   const { messages, sendMessage, status, error } = useChat({
@@ -60,6 +61,7 @@ export function PartyCard({
       messageTrigger?.message &&
       messageTrigger.timestamp !== lastProcessedTimestamp.current
     ) {
+      setIsWaitingForResponse(true);
       sendMessage({ text: messageTrigger.message });
       lastProcessedTimestamp.current = messageTrigger.timestamp;
     }
@@ -76,8 +78,15 @@ export function PartyCard({
       ?.map((part) => part.text)
       ?.join('') || '';
 
-  // Check if we're currently streaming
-  const isLoading = status === 'streaming';
+  // Check if we're currently streaming or waiting for response
+  const isLoading = status === 'streaming' || isWaitingForResponse;
+
+  // Clear waiting state when streaming starts or when we have an error
+  useEffect(() => {
+    if (status === 'streaming' || error) {
+      setIsWaitingForResponse(false);
+    }
+  }, [status, error]);
 
   // Check if there are any messages in this conversation (memoized to prevent infinite loops)
   const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
@@ -202,7 +211,7 @@ export function PartyCard({
             <div className="flex items-center gap-2 py-2">
               <Loader />
               <span className="text-muted-foreground text-sm">
-                {party.shortName} svarer...
+                Søker gjennom {party.shortName}s partiprogram...
               </span>
             </div>
           )}
@@ -213,7 +222,7 @@ export function PartyCard({
         <div className="flex items-center gap-2 py-8">
           <Loader />
           <span className="text-muted-foreground text-sm">
-            Henter svar fra {party.shortName}...
+            Søker gjennom {party.shortName}s partiprogram...
           </span>
         </div>
       )}
