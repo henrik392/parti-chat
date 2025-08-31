@@ -1,17 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [];
   const origin = request.headers.get('origin');
 
   console.log(`[CORS] ${request.method} ${request.url} from origin: ${origin}`);
-  console.log(`[CORS] Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`[CORS] TEMPORARILY DISABLED - ALLOWING ALL ORIGINS`);
 
   // Handle OPTIONS preflight request
   if (request.method === 'OPTIONS') {
     const response = new NextResponse(null, { status: 200 });
 
-    if (origin && allowedOrigins.includes(origin)) {
+    // TEMPORARILY ALLOW ALL ORIGINS (but must specify exact origin when credentials=true)
+    if (origin) {
       response.headers.set('Access-Control-Allow-Origin', origin);
     }
     response.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -31,7 +31,8 @@ export function middleware(request: NextRequest) {
   // Handle actual request
   const response = NextResponse.next();
 
-  if (origin && allowedOrigins.includes(origin)) {
+  // TEMPORARILY ALLOW ALL ORIGINS (but must specify exact origin when credentials=true)
+  if (origin) {
     response.headers.set('Access-Control-Allow-Origin', origin);
   }
   response.headers.set('Access-Control-Allow-Credentials', 'true');
