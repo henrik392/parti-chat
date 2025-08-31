@@ -14,14 +14,14 @@ export const embeddings = pgTable(
     embedding: vector('embedding', { dimensions: 1536 }).notNull(), // OpenAI ada-002 dimensions
     similarity: text('similarity'), // for storing similarity scores during retrieval
   },
-  (table) => ({
+  (table) => [
     // HNSW index for fast similarity search
-    embeddingIndex: index('embedding_index').using(
+    index('embedding_index').using(
       'hnsw',
       table.embedding.op('vector_cosine_ops')
     ),
     // Additional indexes for filtering
-    partyProgramIndex: index('party_program_index').on(table.partyProgramId),
-    pageNumberIndex: index('page_number_index').on(table.pageNumber),
-  })
+    index('party_program_index').on(table.partyProgramId),
+    index('page_number_index').on(table.pageNumber),
+  ]
 );
