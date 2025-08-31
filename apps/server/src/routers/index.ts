@@ -104,9 +104,14 @@ export const appRouter = {
     }
 
     const result = streamText({
-      model: openrouter('openai/gpt-5-chat'),
+      model: openrouter('openai/gpt-5-nano'),
       messages: convertToModelMessages(messages),
       stopWhen: stepCountIs(MAX_STEPS),
+      providerOptions: {
+        openai: {
+          reasoning_effort: 'minimal', // Decreases autonomous exploration
+        },
+      },
       system: party
         ? `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
            Bruk verktøyet for å søke etter relevant informasjon i partiprogrammet før du svarer.
