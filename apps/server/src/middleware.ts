@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
 
   console.log(`[CORS] ${request.method} ${request.url} from origin: ${origin}`);
-  console.log(`[CORS] TEMPORARILY DISABLED - ALLOWING ALL ORIGINS`);
+  console.log('[CORS] TEMPORARILY DISABLED - ALLOWING ALL ORIGINS');
 
   // Handle OPTIONS preflight request
   if (request.method === 'OPTIONS') {

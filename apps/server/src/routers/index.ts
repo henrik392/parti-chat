@@ -104,7 +104,7 @@ export const appRouter = {
     }
 
     const result = streamText({
-      model: openrouter('openai/gpt-5-nano'),
+      model: openrouter('openai/gpt-5-chat'),
       messages: convertToModelMessages(messages),
       stopWhen: stepCountIs(MAX_STEPS),
       system: party
@@ -121,10 +121,6 @@ export const appRouter = {
           }),
           execute: async ({ question }) => {
             try {
-              console.log(
-                `[ROUTER] Executing getPartyInformation for party: "${partyShortName}", question: "${question}"`
-              );
-
               const relevantContent = await findRelevantContent(
                 question,
                 partyShortName || '',

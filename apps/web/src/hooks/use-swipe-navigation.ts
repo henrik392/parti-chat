@@ -29,7 +29,11 @@ export function useSwipeNavigation({
   });
 
   const handlePanStart = useCallback(() => {
-    setSwipeState((prev) => ({ ...prev, isDragging: true, isSwipeActive: false }));
+    setSwipeState((prev) => ({
+      ...prev,
+      isDragging: true,
+      isSwipeActive: false,
+    }));
   }, []);
 
   const handlePan = useCallback(
@@ -37,7 +41,8 @@ export function useSwipeNavigation({
       // Check if this is more horizontal than vertical movement
       const horizontalMovement = Math.abs(info.offset.x);
       const verticalMovement = Math.abs(info.offset.y);
-      const isHorizontalSwipe = horizontalMovement > verticalMovement && horizontalMovement > 10;
+      const isHorizontalSwipe =
+        horizontalMovement > verticalMovement && horizontalMovement > 10;
 
       // Only activate swipe if it's clearly horizontal movement
       if (!isHorizontalSwipe) {

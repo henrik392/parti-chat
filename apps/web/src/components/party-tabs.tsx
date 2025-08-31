@@ -109,7 +109,9 @@ export function PartyTabs({
         }}
         transition={{
           type: 'spring',
-          stiffness: swipeState.isSwipeActive ? DRAG_STIFFNESS : NORMAL_STIFFNESS,
+          stiffness: swipeState.isSwipeActive
+            ? DRAG_STIFFNESS
+            : NORMAL_STIFFNESS,
           damping: swipeState.isSwipeActive ? DRAG_DAMPING : NORMAL_DAMPING,
           mass: SPRING_MASS,
         }}
