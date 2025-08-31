@@ -102,7 +102,7 @@ export const appRouter = {
     }
 
     const result = streamText({
-      model: openrouter('openai/gpt-4o-mini'),
+      model: openrouter('openai/gpt-5-nano'),
       messages: convertToModelMessages(messages),
       stopWhen: stepCountIs(MAX_STEPS),
       system: party
@@ -121,7 +121,7 @@ export const appRouter = {
             try {
               const relevantContent = await findRelevantContent(
                 question,
-                party?.shortName || '',
+                partyShortName || '',
                 DEFAULT_CONTENT_LIMIT,
                 DEFAULT_SIMILARITY_THRESHOLD
               );

@@ -73,26 +73,6 @@ export async function findRelevantContent(
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
-    // First, let's see what party programs exist in the database
-    const _allPartyPrograms = await db
-      .select({
-        id: partyPrograms.id,
-        partyId: partyPrograms.partyId,
-        title: partyPrograms.title,
-      })
-      .from(partyPrograms);
-
-    // Check if the specific party program exists by joining with parties table
-    const _specificPartyProgram = await db
-      .select({
-        id: partyPrograms.id,
-        partyId: partyPrograms.partyId,
-        title: partyPrograms.title,
-      })
-      .from(partyPrograms)
-      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
-      .where(eq(parties.shortName, partyShortName));
-
     const results = await db
       .select({
         content: embeddings.content,
@@ -107,26 +87,10 @@ export async function findRelevantContent(
       .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
       .where(
         and(
-          gt(similarity, minSimilarity),
-          sql`lower(${parties.shortName}) = lower(${partyShortName})`
+          gt(similarity, minSimilarity)
+          // sql`lower(${parties.shortName}) = lower(${partyShortName})`
         )
       )
-      .orderBy(desc(similarity))
-      .limit(limit);
-
-    // Let's also try without the party filter to see what we get
-    const _resultsWithoutPartyFilter = await db
-      .select({
-        content: embeddings.content,
-        similarity,
-        chapterTitle: embeddings.chapterTitle,
-        pageNumber: embeddings.pageNumber,
-        partyProgramId: embeddings.partyProgramId,
-        programPartyId: partyPrograms.partyId,
-      })
-      .from(embeddings)
-      .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
-      .where(gt(similarity, minSimilarity))
       .orderBy(desc(similarity))
       .limit(limit);
 
