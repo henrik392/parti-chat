@@ -80,6 +80,26 @@ const PARTIES = [
   },
 ] as const;
 
+// Debug environment variables
+console.log('[ENV DEBUG] Available environment variables:');
+console.log(
+  '[ENV DEBUG] DATABASE_URL:',
+  process.env.DATABASE_URL ? 'SET' : 'NOT SET'
+);
+console.log(
+  '[ENV DEBUG] CORS_ORIGIN:',
+  process.env.CORS_ORIGIN ? 'SET' : 'NOT SET'
+);
+console.log(
+  '[ENV DEBUG] OPEN_ROUTER_API_KEY:',
+  process.env.OPEN_ROUTER_API_KEY ? 'SET' : 'NOT SET'
+);
+console.log(
+  '[ENV DEBUG] OPENAI_API_KEY:',
+  process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET'
+);
+console.log('[ENV DEBUG] NODE_ENV:', process.env.NODE_ENV);
+
 const openrouter = createOpenRouter({
   apiKey: process.env.OPEN_ROUTER_API_KEY,
 });
