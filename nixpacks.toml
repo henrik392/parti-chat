@@ -3,6 +3,7 @@
 NIXPACKS_BUILD_SYSTEM = "bun"
 NODE_ENV = "production"
 PORT = "3000"
+PLEASE = "WORK"
 
 [phases.setup]
 nixPkgs = ["bun", "nodejs_20", "python3", "postgresql"]
