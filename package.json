@@ -21,7 +21,9 @@
     "db:start": "turbo -F server db:start",
     "db:watch": "turbo -F server db:watch",
     "db:stop": "turbo -F server db:stop",
-    "db:down": "turbo -F server db:down"
+    "db:down": "turbo -F server db:down",
+    "start:server": "turbo -F server start",
+    "start": "turbo start"
   },
   "dependencies": {
     "uuid": "^11.1.0"

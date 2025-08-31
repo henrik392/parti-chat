@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack --port=3001",
     "build": "next build",
-    "start": "node .next/standalone/server.js",
+    "start": "next start --port=3001",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:generate": "drizzle-kit generate",

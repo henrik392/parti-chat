@@ -1,9 +1,11 @@
-# Nixpacks configuration for parti-chat
+# Nixpacks configuration for parti-chat full-stack monorepo
 [variables]
 NIXPACKS_BUILD_SYSTEM = "bun"
+NODE_ENV = "production"
+PORT = "3000"
 
 [phases.setup]
-nixPkgs = ["bun", "nodejs-18_x", "python3", "postgresql"]
+nixPkgs = ["bun", "nodejs_20", "python3", "postgresql"]
 
 [phases.install]
 cmds = ["bun install --frozen-lockfile"]
