@@ -98,9 +98,9 @@ export function PartyTabs({
       {/* Party Cards - All rendered but only active one visible with swipe support */}
       <motion.div
         animate={{
-          x: swipeState.isDragging ? swipeState.offset : 0,
+          x: swipeState.isSwipeActive ? swipeState.offset : 0,
         }}
-        className="absolute inset-0 top-16 cursor-grab select-none active:cursor-grabbing sm:top-20"
+        className="absolute inset-0 top-16 sm:top-20"
         onPan={handlePan}
         onPanEnd={handlePanEnd}
         onPanStart={handlePanStart}
@@ -109,8 +109,8 @@ export function PartyTabs({
         }}
         transition={{
           type: 'spring',
-          stiffness: swipeState.isDragging ? DRAG_STIFFNESS : NORMAL_STIFFNESS,
-          damping: swipeState.isDragging ? DRAG_DAMPING : NORMAL_DAMPING,
+          stiffness: swipeState.isSwipeActive ? DRAG_STIFFNESS : NORMAL_STIFFNESS,
+          damping: swipeState.isSwipeActive ? DRAG_DAMPING : NORMAL_DAMPING,
           mass: SPRING_MASS,
         }}
       >

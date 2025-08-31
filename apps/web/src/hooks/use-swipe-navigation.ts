@@ -12,6 +12,7 @@ type UseSwipeNavigationProps = {
 type SwipeState = {
   offset: number;
   isDragging: boolean;
+  isSwipeActive: boolean;
 };
 
 export function useSwipeNavigation({
@@ -24,14 +25,25 @@ export function useSwipeNavigation({
   const [swipeState, setSwipeState] = useState<SwipeState>({
     offset: 0,
     isDragging: false,
+    isSwipeActive: false,
   });
 
   const handlePanStart = useCallback(() => {
-    setSwipeState((prev) => ({ ...prev, isDragging: true }));
+    setSwipeState((prev) => ({ ...prev, isDragging: true, isSwipeActive: false }));
   }, []);
 
   const handlePan = useCallback(
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      // Check if this is more horizontal than vertical movement
+      const horizontalMovement = Math.abs(info.offset.x);
+      const verticalMovement = Math.abs(info.offset.y);
+      const isHorizontalSwipe = horizontalMovement > verticalMovement && horizontalMovement > 10;
+
+      // Only activate swipe if it's clearly horizontal movement
+      if (!isHorizontalSwipe) {
+        return;
+      }
+
       // Limit the offset to provide resistance at boundaries
       const maxOffset = 100; // Maximum offset before resistance kicks in
       let constrainedOffset = info.offset.x;
@@ -48,6 +60,7 @@ export function useSwipeNavigation({
       setSwipeState({
         offset: Math.max(-maxOffset, Math.min(maxOffset, constrainedOffset)),
         isDragging: true,
+        isSwipeActive: true,
       });
     },
     [activeIndex, totalItems]
@@ -64,6 +77,8 @@ export function useSwipeNavigation({
         swipeDistance > swipeThreshold || swipeVelocity > velocityThreshold;
 
       if (!shouldNavigate) {
+        // Reset swipe state if swipe doesn't meet threshold
+        setSwipeState({ offset: 0, isDragging: false, isSwipeActive: false });
         return;
       }
 
@@ -83,7 +98,7 @@ export function useSwipeNavigation({
       }
 
       // Reset swipe state
-      setSwipeState({ offset: 0, isDragging: false });
+      setSwipeState({ offset: 0, isDragging: false, isSwipeActive: false });
     },
     [activeIndex, totalItems, onIndexChange, swipeThreshold, velocityThreshold]
   );
