@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
@@ -37,6 +37,7 @@ const ChatBotDemo = () => {
   const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(
     new Set()
   );
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Update selected parties when short names change
   useEffect(() => {
@@ -74,6 +75,10 @@ const ChatBotDemo = () => {
   const handleSuggestionClick = (suggestion: string) => {
     // Just set the input value, don't send the message
     setInput(suggestion);
+    // Focus the input after setting the suggestion
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handlePartyMessagesChange = (
@@ -144,6 +149,7 @@ const ChatBotDemo = () => {
                   }
                   return 'Still spørsmål';
                 })()}
+                ref={inputRef}
                 value={input}
               />
               <PromptInputSubmit disabled={!(input && hasSelectedParties)} />

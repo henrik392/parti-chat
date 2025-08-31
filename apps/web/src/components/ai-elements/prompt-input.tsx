@@ -7,7 +7,7 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
 } from 'react';
-import { Children, useRef } from 'react';
+import { Children, forwardRef, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -37,61 +37,69 @@ export type PromptInputTextareaProps = ComponentProps<typeof Textarea> & {
   onMultilineChange?: (isMultiline: boolean) => void;
 };
 
-export const PromptInputTextarea = ({
-  onChange,
-  className,
-  placeholder = 'What would you like to know?',
-  minHeight = 8,
-  maxHeight = 120,
-  onMultilineChange,
-  value,
-  ...props
-}: PromptInputTextareaProps) => {
-  const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
-    if (e.key === 'Enter') {
-      // Don't submit if IME composition is in progress
-      if (e.nativeEvent.isComposing) {
-        return;
+export const PromptInputTextarea = forwardRef<
+  HTMLTextAreaElement,
+  PromptInputTextareaProps
+>(
+  (
+    {
+      onChange,
+      className,
+      placeholder = 'What would you like to know?',
+      minHeight = 8,
+      maxHeight = 120,
+      onMultilineChange,
+      value,
+      ...props
+    },
+    ref
+  ) => {
+    const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+      if (e.key === 'Enter') {
+        // Don't submit if IME composition is in progress
+        if (e.nativeEvent.isComposing) {
+          return;
+        }
+
+        if (e.shiftKey) {
+          // Allow newline
+          return;
+        }
+
+        // Submit on Enter (without Shift)
+        e.preventDefault();
+        const form = e.currentTarget.form;
+        if (form) {
+          form.requestSubmit();
+        }
       }
+    };
 
-      if (e.shiftKey) {
-        // Allow newline
-        return;
-      }
+    return (
+      <Textarea
+        className={cn(
+          'w-full resize-none rounded-none border-none px-2 py-1 text-sm leading-snug shadow-none outline-none ring-0',
+          'bg-transparent dark:bg-transparent',
+          'focus-visible:ring-0',
+          // Align text center vertically
+          'flex items-center',
+          className
+        )}
+        name="message"
+        onChange={(e) => {
+          onChange?.(e);
+        }}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        ref={ref}
+        value={value}
+        {...props}
+      />
+    );
+  }
+);
 
-      // Submit on Enter (without Shift)
-      e.preventDefault();
-      const form = e.currentTarget.form;
-      if (form) {
-        form.requestSubmit();
-      }
-    }
-  };
-
-  const ref = useRef<HTMLTextAreaElement | null>(null);
-
-  return (
-    <Textarea
-      className={cn(
-        'w-full resize-none rounded-none border-none px-2 py-1 text-sm leading-snug shadow-none outline-none ring-0',
-        'bg-transparent dark:bg-transparent',
-        'focus-visible:ring-0',
-        // Align text center vertically
-        'flex items-center',
-        className
-      )}
-      name="message"
-      onChange={(e) => {
-        onChange?.(e);
-      }}
-      onKeyDown={handleKeyDown}
-      placeholder={placeholder}
-      ref={ref}
-      value={value}
-      {...props}
-    />
-  );
-};
+PromptInputTextarea.displayName = 'PromptInputTextarea';
 
 export type PromptInputToolbarProps = HTMLAttributes<HTMLDivElement>;
 

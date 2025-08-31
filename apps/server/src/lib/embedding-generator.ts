@@ -95,10 +95,17 @@ export async function findRelevantContent(
       .orderBy(desc(similarity))
       .limit(20);
 
-    console.log(`[RAG] Found ${allResults.length} total results without party filter`);
+    console.log(
+      `[RAG] Found ${allResults.length} total results without party filter`
+    );
     if (allResults.length > 0) {
-      console.log(`[RAG] Available parties in results:`, allResults.map(r => r.partyShortName).slice(0, 10));
-      console.log(`[RAG] Best match (any party): similarity=${allResults[0]?.similarity}, party="${allResults[0]?.partyShortName}"`);
+      console.log(
+        '[RAG] Available parties in results:',
+        allResults.map((r) => r.partyShortName).slice(0, 10)
+      );
+      console.log(
+        `[RAG] Best match (any party): similarity=${allResults[0]?.similarity}, party="${allResults[0]?.partyShortName}"`
+      );
     }
 
     // Now the filtered results
