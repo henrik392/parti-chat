@@ -73,26 +73,6 @@ export async function findRelevantContent(
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
-    // First check: How many results WITHOUT party filter?
-    const allResults = await db
-      .select({
-        content: embeddings.content,
-        similarity,
-        chapterTitle: embeddings.chapterTitle,
-        pageNumber: embeddings.pageNumber,
-        partyProgramId: embeddings.partyProgramId,
-        programPartyId: partyPrograms.partyId,
-        partyShortName: parties.shortName,
-      })
-      .from(embeddings)
-      .innerJoin(partyPrograms, eq(embeddings.partyProgramId, partyPrograms.id))
-      .innerJoin(parties, eq(partyPrograms.partyId, parties.id))
-      .where(gt(similarity, minSimilarity))
-      .orderBy(desc(similarity))
-      .limit(20);
-    if (allResults.length > 0) {
-    }
-
     // Now the filtered results
     const results = await db
       .select({
@@ -115,9 +95,6 @@ export async function findRelevantContent(
       )
       .orderBy(desc(similarity))
       .limit(limit);
-
-    if (results.length > 0) {
-    }
 
     return results.map((result) => ({
       content: result.content,
