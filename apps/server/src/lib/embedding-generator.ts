@@ -67,13 +67,12 @@ export async function findRelevantContent(
   query: string,
   partyShortName: string,
   limit = 5,
-  minSimilarity = 0.3
+  minSimilarity = 0.6
 ): Promise<RetrievalResult[]> {
   try {
     const queryEmbedding = await generateSingleEmbedding(query);
     const similarity = sql<number>`1 - (${cosineDistance(embeddings.embedding, queryEmbedding)})`;
 
-    // Now the filtered results
     const results = await db
       .select({
         content: embeddings.content,
