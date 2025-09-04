@@ -121,13 +121,10 @@ const ChatBotDemo = () => {
   return (
     <div className="relative mx-auto size-full h-screen max-w-5xl p-2 sm:p-6">
       <div className="flex h-full flex-col">
-        <Conversation className="h-full">
-          <ConversationContent>
-            {/* Empty State */}
-            {!hasSelectedParties && <EmptyChatState />}
-
-            {/* Party Tabs for conversations */}
-            {hasSelectedParties && (
+        {hasSelectedParties ? (
+          // Dynamic conversation container with scroll behavior
+          <Conversation className="h-full" initial="smooth" resize="smooth">
+            <ConversationContent>
               <PartyTabs
                 activePartyShortName={activePartyShortName}
                 messageTrigger={messageTrigger}
@@ -138,10 +135,17 @@ const ChatBotDemo = () => {
                 showSuggestions={!hasAnyMessages}
                 suggestions={suggestions}
               />
-            )}
-          </ConversationContent>
-          <ConversationScrollButton />
-        </Conversation>
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+        ) : (
+          // Static container for empty state - no scrolling behavior
+          <div className="relative flex-1 overflow-y-auto">
+            <div className="p-2 sm:p-4">
+              <EmptyChatState />
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3 px-2 pt-4 sm:px-4">
           <PartySelector
