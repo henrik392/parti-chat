@@ -1,7 +1,7 @@
 'use client';
 
-import posthog from 'posthog-js';
 import { Star } from 'lucide-react';
+import posthog from 'posthog-js';
 import { useEffect, useState } from 'react';
 
 // Repository configuration
@@ -51,14 +51,14 @@ export function GitHubButton() {
     <a
       className="group inline-flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3 text-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/20 hover:bg-muted/60 hover:shadow-md"
       href={REPO_URL}
-      rel="noopener noreferrer"
-      target="_blank"
       onClick={() => {
         posthog.capture('github_button_clicked', {
           repo_url: REPO_URL,
           stars_count: stars,
         });
       }}
+      rel="noopener noreferrer"
+      target="_blank"
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors duration-200 group-hover:bg-primary/20">
         <svg

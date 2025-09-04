@@ -1,8 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
 import posthog from 'posthog-js';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Conversation,
   ConversationContent,
