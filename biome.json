@@ -19,7 +19,9 @@
       "!**/.alchemy",
       "!**/wrangler.jsonc",
       "!**/.source",
-      "!**/index.css"
+      "!**/index.css",
+      "!**/*-logs.jsonl",
+      "!**/ingestion"
     ]
   },
   "extends": ["ultracite"],

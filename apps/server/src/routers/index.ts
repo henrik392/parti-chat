@@ -1,84 +1,211 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { RouterClient } from '@orpc/server';
 import { streamToEventIterator } from '@orpc/server';
-import { convertToModelMessages, stepCountIs, streamText, tool } from 'ai';
+import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
-import {
-  findRelevantContent,
-  type RetrievalResult,
-} from '../lib/embedding-generator';
+import { findRelevantContent } from '../lib/embedding-generator';
 import { publicProcedure } from '../lib/orpc';
 import {
   generateRequestId,
   performanceLogger,
 } from '../lib/performance-logger';
 
-// Constants for RAG
-const DEFAULT_CONTENT_LIMIT = 5;
-const DEFAULT_SIMILARITY_THRESHOLD = 0.6;
-const MAX_STEPS = 5;
-const MODEL = 'openai/gpt-4o';
+// Constants
+const DEFAULT_CONTENT_LIMIT = 8; // Increased to get more potential matches
+const DEFAULT_SIMILARITY_THRESHOLD = 0.6; // Lowered to be more inclusive
+const MODEL = 'openai/gpt-5-chat';
 
-// Proactive RAG cache to store results before model decides to call tool
-const proactiveRAGCache = new Map<string, Promise<RetrievalResult[]>>();
-const SECONDS_IN_MINUTE = 60;
-const MS_IN_SECOND = 1000;
-const MINUTES_TO_MS = SECONDS_IN_MINUTE * MS_IN_SECOND;
-const CLEANUP_DELAY_MINUTES = 5;
-const CACHE_CLEANUP_DELAY = CLEANUP_DELAY_MINUTES * MINUTES_TO_MS;
-const CACHE_KEY_SUBSTRING_LENGTH = 50;
-const SYSTEM_PROMPT_LENGTH_WITH_PARTY = 200;
-const SYSTEM_PROMPT_LENGTH_NO_PARTY = 80;
+// Similarity thresholds for relevance classification
+const HIGH_SIMILARITY_THRESHOLD = 0.75;
+const MEDIUM_SIMILARITY_THRESHOLD = 0.6;
+const LOW_SIMILARITY_THRESHOLD = 0.5;
+const DECIMAL_PRECISION = 100;
+
+// Types
+type MessagePart =
+  | {
+      type?: string;
+      text?: string;
+      content?: string;
+    }
+  | string;
+
+type Message = {
+  content?: string | object;
+  parts?: MessagePart[];
+  role?: string;
+};
+
+type FormattedSearchResult = {
+  id: number;
+  content: string;
+  chapterTitle: string;
+  pageNumber?: number;
+  similarity: number;
+  relevanceNote: string;
+};
+
+type RagContext = {
+  party: (typeof PARTIES)[number];
+  resultsCount: number;
+  avgSimilarity: number;
+  searchResults: FormattedSearchResult[];
+  userQuestion: string;
+};
 
 /**
- * Start proactive RAG search if we have party and user message
+ * Extract text content from a message object
  */
-function startProactiveRAG(
+function extractMessageContent(message: Message): string {
+  if (typeof message?.content === 'string') {
+    return message.content;
+  }
+
+  if (message?.parts && Array.isArray(message.parts)) {
+    return message.parts
+      .filter(
+        (part: MessagePart) => typeof part === 'string' || part.type === 'text'
+      )
+      .map((part: MessagePart) =>
+        typeof part === 'string' ? part : part.text || part.content || ''
+      )
+      .join(' ')
+      .trim();
+  }
+
+  if (typeof message?.content === 'object' && message?.content) {
+    return JSON.stringify(message.content);
+  }
+
+  return '';
+}
+
+/**
+ * Get relevance note based on similarity score
+ */
+function getRelevanceNote(similarity: number): string {
+  if (similarity > HIGH_SIMILARITY_THRESHOLD) {
+    return 'Høy relevans';
+  }
+  if (similarity > MEDIUM_SIMILARITY_THRESHOLD) {
+    return 'Middels relevans';
+  }
+  if (similarity > LOW_SIMILARITY_THRESHOLD) {
+    return 'Lav relevans';
+  }
+  return 'Meget lav relevans';
+}
+
+/**
+ * Get system prompt based on RAG context availability
+ */
+function getSystemPrompt(
+  party: (typeof PARTIES)[number],
+  ragContext: RagContext | null
+) {
+  if (ragContext) {
+    const searchResultsText = ragContext.searchResults
+      .map(
+        (result) =>
+          `[${result.id}] ${result.relevanceNote} (${result.similarity}) - ${result.chapterTitle}:\n${result.content}`
+      )
+      .join('\n\n');
+
+    return `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
+
+BRUKERENS SPØRSMÅL: "${ragContext.userQuestion}"
+
+SØKERESULTATER FRA PARTIPROGRAMMET:
+${searchResultsText}
+
+INSTRUKSJONER:
+- Vurder nøye om søkeresultatene faktisk svarer på brukerens spørsmål
+- Hvis NOEN av søkeresultatene er relevante: Svar basert på informasjonen og referer til [nummer]
+- Prioriter resultater med "Høy relevans" og "Middels relevans", men vurder også "Lav relevans" hvis de svarer på spørsmålet
+- Hvis INGEN søkeresultater svarer på spørsmålet: Svar "Ikke omtalt i ${party.name}s partiprogram"
+- Ikke gjett eller lag opp svar som ikke er direkte støttet av søkeresultatene`;
+  }
+  return `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
+         Ingen relevant informasjon ble funnet for dette spørsmålet.
+         Svar "Ikke omtalt i ${party.name}s partiprogram."`;
+}
+
+async function getRagContext(
   party: (typeof PARTIES)[number] | null,
-  messages: Array<{ content?: string }>,
+  messages: Message[],
   partyShortName: string | undefined,
   requestId: string
-): void {
-  if (!party || messages.length === 0) {
-    return;
+): Promise<RagContext | null> {
+  if (!party) {
+    return null;
   }
 
   const lastMessage = messages.at(-1);
-  if (!lastMessage?.content || typeof lastMessage.content !== 'string') {
-    return;
+  const question = lastMessage ? extractMessageContent(lastMessage) : '';
+
+  if (!question) {
+    return null;
   }
 
-  const cacheKey = `${partyShortName}-${lastMessage.content}`;
-
-  // Check if we already have this search cached
-  if (proactiveRAGCache.has(cacheKey)) {
-    performanceLogger.logMilestone(requestId, 'proactive-rag-cache-hit', {
-      partyShortName,
-      cacheKey: cacheKey.substring(0, CACHE_KEY_SUBSTRING_LENGTH),
-    });
-    return;
-  }
-
-  performanceLogger.logMilestone(requestId, 'proactive-rag-started', {
-    partyShortName,
-    questionLength: lastMessage.content.length,
+  performanceLogger.logMilestone(requestId, 'rag-search-started', {
+    questionLength: question.length,
+    partyShortName: partyShortName || 'unknown',
   });
 
-  // Start the RAG search proactively
-  const proactiveRAGPromise = findRelevantContent(
-    lastMessage.content,
-    partyShortName || '',
-    DEFAULT_CONTENT_LIMIT,
-    DEFAULT_SIMILARITY_THRESHOLD,
-    requestId
+  const { result: relevantContent } = await performanceLogger.timeAsync(
+    requestId,
+    'rag-search',
+    () =>
+      findRelevantContent(
+        question,
+        partyShortName || '',
+        DEFAULT_CONTENT_LIMIT,
+        DEFAULT_SIMILARITY_THRESHOLD,
+        requestId
+      )
   );
 
-  proactiveRAGCache.set(cacheKey, proactiveRAGPromise);
+  if (relevantContent.length > 0) {
+    // Format the content with similarity scores for better model evaluation
+    const formattedContent = relevantContent.map((result, index) => ({
+      id: index + 1,
+      content: result.content,
+      chapterTitle: result.chapterTitle || 'Ukjent kapittel',
+      pageNumber: result.pageNumber,
+      similarity:
+        Math.round(result.similarity * DECIMAL_PRECISION) / DECIMAL_PRECISION,
+      relevanceNote: getRelevanceNote(result.similarity),
+    }));
 
-  // Clean up cache after 5 minutes to prevent memory leaks
-  setTimeout(() => {
-    proactiveRAGCache.delete(cacheKey);
-  }, CACHE_CLEANUP_DELAY);
+    const context = {
+      party,
+      resultsCount: relevantContent.length,
+      avgSimilarity:
+        Math.round(
+          (relevantContent.reduce((sum, r) => sum + r.similarity, 0) /
+            relevantContent.length) *
+            DECIMAL_PRECISION
+        ) / DECIMAL_PRECISION,
+      searchResults: formattedContent,
+      userQuestion: question, // Include the original question for context
+    };
+
+    performanceLogger.logMilestone(requestId, 'rag-context-prepared', {
+      resultsCount: relevantContent.length,
+      avgSimilarity: context.avgSimilarity,
+      partyShortName: partyShortName || 'unknown',
+    });
+
+    return context;
+  }
+
+  performanceLogger.logMilestone(requestId, 'rag-context-no-results', {
+    userQuestion: question,
+    partyShortName: partyShortName || 'unknown',
+    searchThreshold: DEFAULT_SIMILARITY_THRESHOLD,
+    reason: 'No results above similarity threshold',
+  });
+  return null;
 }
 
 const chatInputSchema = z.object({
@@ -158,16 +285,16 @@ export const appRouter = {
     return 'OK';
   }),
 
-  chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
+  chat: publicProcedure.input(chatInputSchema).handler(async ({ input }) => {
     const { messages, partyShortName } = input;
     const requestId = generateRequestId();
 
     // Start performance tracking session
     performanceLogger.startSession(requestId);
+
     performanceLogger.logMilestone(requestId, 'chat-request-received', {
       messageCount: messages.length,
       partyShortName: partyShortName || null,
-      lastMessageLength: messages.at(-1)?.content?.length || 0,
     });
 
     // Find the party information if partyShortName is provided
@@ -180,197 +307,29 @@ export const appRouter = {
       }
     }
 
-    // Proactive RAG: Start searching immediately if we have a party and user message
-    startProactiveRAG(party, messages, partyShortName, requestId);
-
-    performanceLogger.logMilestone(requestId, 'model-stream-starting', {
-      model: MODEL,
-      maxSteps: MAX_STEPS,
-      systemPromptLength: party
-        ? SYSTEM_PROMPT_LENGTH_WITH_PARTY
-        : SYSTEM_PROMPT_LENGTH_NO_PARTY,
-    });
+    // Get RAG context for party-based responses
+    const ragContext = await getRagContext(
+      party,
+      messages,
+      partyShortName,
+      requestId
+    );
 
     const result = streamText({
       model: openrouter(MODEL),
       messages: convertToModelMessages(messages),
-      stopWhen: stepCountIs(MAX_STEPS),
       providerOptions: {
         openai: {
-          reasoning_effort: 'minimal', // Decreases autonomous exploration
+          reasoning_effort: 'minimal',
         },
       },
       system: party
-        ? `Du er en nyttig assistent som svarer basert på ${party.name}s partiprogram.
-           Bruk verktøyet for å søke etter relevant informasjon i partiprogrammet før du svarer.
-           Svar kun basert på informasjon fra partiprogrammet.
-           Hvis ingen relevant informasjon finnes, svar "Ikke omtalt i ${party.name}s partiprogram."`
+        ? getSystemPrompt(party, ragContext)
         : 'Du er en nyttig assistent som kan svare på generelle spørsmål.',
-      tools: {
-        getPartyInformation: tool({
-          description: `Hent informasjon fra ${party?.name || 'parti'}programmet for å svare på brukerens spørsmål`,
-          inputSchema: z.object({}),
-          execute: async () => {
-            // Use the user's original message directly for cache matching
-            const lastMessage = messages.at(-1);
-            const question = lastMessage?.content || '';
-            try {
-              performanceLogger.logMilestone(
-                requestId,
-                'tool-execution-started',
-                {
-                  toolName: 'getPartyInformation',
-                  questionLength: question.length,
-                  partyShortName: partyShortName || 'unknown',
-                }
-              );
-
-              // Always wait for proactive RAG results if available
-              const proactiveCacheKey = `${partyShortName}-${question}`;
-              let relevantContent: RetrievalResult[];
-
-              if (proactiveRAGCache.has(proactiveCacheKey)) {
-                performanceLogger.logMilestone(
-                  requestId,
-                  'waiting-for-proactive-rag',
-                  {
-                    cacheKey: proactiveCacheKey.substring(
-                      0,
-                      CACHE_KEY_SUBSTRING_LENGTH
-                    ),
-                  }
-                );
-
-                // Wait for the proactive search to complete
-                const proactivePromise =
-                  proactiveRAGCache.get(proactiveCacheKey);
-                if (!proactivePromise) {
-                  throw new Error('Proactive RAG promise not found in cache');
-                }
-
-                const { result: proactiveResult } =
-                  await performanceLogger.timeAsync(
-                    requestId,
-                    'proactive-rag-wait',
-                    () => proactivePromise,
-                    {
-                      cacheKey: proactiveCacheKey.substring(
-                        0,
-                        CACHE_KEY_SUBSTRING_LENGTH
-                      ),
-                    }
-                  );
-                relevantContent = proactiveResult;
-
-                // Clean up the cache entry since we've used it
-                proactiveRAGCache.delete(proactiveCacheKey);
-              } else {
-                // Fallback to traditional RAG search if no proactive results
-                performanceLogger.logMilestone(
-                  requestId,
-                  'fallback-to-traditional-rag',
-                  {
-                    questionLength: question.length,
-                  }
-                );
-
-                const { result: ragResult } = await performanceLogger.timeAsync(
-                  requestId,
-                  'tool-rag-search-fallback',
-                  () =>
-                    findRelevantContent(
-                      question,
-                      partyShortName || '',
-                      DEFAULT_CONTENT_LIMIT,
-                      DEFAULT_SIMILARITY_THRESHOLD,
-                      requestId
-                    ),
-                  {
-                    questionLength: question.length,
-                    partyShortName: partyShortName || 'unknown',
-                  }
-                );
-                relevantContent = ragResult;
-              }
-
-              if (relevantContent.length === 0) {
-                return `Ingen relevant informasjon funnet i ${party?.name || 'parti'}programmet.`;
-              }
-
-              // Format content with citation markers - timed for response formatting
-              const { result: formattedResponse } = performanceLogger.timeSync(
-                requestId,
-                'tool-response-formatting',
-                () => {
-                  let responseText = '';
-                  const citations: Array<{
-                    content: string;
-                    chapterTitle?: string;
-                    pageNumber?: number;
-                    similarity: number;
-                  }> = [];
-
-                  relevantContent.forEach((content: RetrievalResult, index) => {
-                    const citationNumber = index + 1;
-                    citations.push({
-                      content: content.content,
-                      chapterTitle: content.chapterTitle,
-                      pageNumber: content.pageNumber,
-                      similarity: content.similarity,
-                    });
-
-                    if (index === 0) {
-                      responseText = `Basert på ${party?.name || 'parti'}programmet: ${content.content} [${citationNumber}]`;
-                    } else {
-                      responseText += ` Videre står det at ${content.content} [${citationNumber}]`;
-                    }
-                  });
-
-                  // Return structured data that the AI can use to form a response with citations
-                  return JSON.stringify({
-                    text: responseText,
-                    citations: citations.map((citation, index) => ({
-                      id: index + 1,
-                      content: citation.content,
-                      chapterTitle: citation.chapterTitle || 'Ukjent kapittel',
-                      pageNumber: citation.pageNumber,
-                      similarity: citation.similarity,
-                      source: `${party?.name} Partiprogram${citation.pageNumber ? ` - Side ${citation.pageNumber}` : ''}`,
-                    })),
-                  });
-                },
-                {
-                  resultsCount: relevantContent.length,
-                  totalContentLength: relevantContent.reduce(
-                    (sum, r) => sum + r.content.length,
-                    0
-                  ),
-                }
-              );
-
-              performanceLogger.logMilestone(
-                requestId,
-                'tool-execution-completed',
-                {
-                  toolName: 'getPartyInformation',
-                  resultsFound: relevantContent.length,
-                  responseLength: formattedResponse.length,
-                }
-              );
-
-              return formattedResponse;
-            } catch (_error) {
-              return `Feil ved henting av informasjon fra ${party?.name || 'parti'}programmet.`;
-            }
-          },
-        }),
-      },
     });
 
     performanceLogger.logMilestone(requestId, 'stream-initiated', {
-      model: MODEL,
-      hasParty: !!party,
-      toolsAvailable: 1,
+      hasRagContext: !!ragContext,
     });
 
     // Note: We cannot await the stream completion here as it's streamed to client

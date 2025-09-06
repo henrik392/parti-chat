@@ -84,7 +84,7 @@ export async function generateSingleEmbedding(
 export async function findRelevantContent(
   query: string,
   partyShortName: string,
-  limit = 5,
+  limit = 8,
   minSimilarity = 0.6,
   requestId?: string
 ): Promise<RetrievalResult[]> {

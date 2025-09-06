@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../db';
-import { embeddings, parties, partyPrograms } from '../db/schema';
-import { generateEmbeddings } from './embedding-generator';
+import { db } from '../../db';
+import { embeddings, parties, partyPrograms } from '../../db/schema';
+import { generateEmbeddings } from '../embedding-generator';
 import { chunkPDFContent, processPDF } from './pdf-processor';
 
 // Progress constants

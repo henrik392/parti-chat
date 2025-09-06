@@ -237,9 +237,7 @@ class PerformanceLogger {
       const logLine = `${JSON.stringify(metric)}\n`;
       writeFileSync(this.logFilePath, logLine, { flag: 'a' });
     } catch (_error) {
-      // Fail silently in production, but log to console in development
-      if (process.env.NODE_ENV === 'development') {
-      }
+      // Fail silently in production - intentionally left empty
     }
   }
 
