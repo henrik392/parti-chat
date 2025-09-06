@@ -19,6 +19,68 @@ const DEFAULT_SIMILARITY_THRESHOLD = 0.6;
 const MAX_STEPS = 5;
 const MODEL = 'openai/gpt-4o';
 
+// Proactive RAG cache to store results before model decides to call tool
+const proactiveRAGCache = new Map<string, Promise<RetrievalResult[]>>();
+const SECONDS_IN_MINUTE = 60;
+const MS_IN_SECOND = 1000;
+const MINUTES_TO_MS = SECONDS_IN_MINUTE * MS_IN_SECOND;
+const CLEANUP_DELAY_MINUTES = 5;
+const CACHE_CLEANUP_DELAY = CLEANUP_DELAY_MINUTES * MINUTES_TO_MS;
+const CACHE_KEY_SUBSTRING_LENGTH = 50;
+const SYSTEM_PROMPT_LENGTH_WITH_PARTY = 200;
+const SYSTEM_PROMPT_LENGTH_NO_PARTY = 80;
+
+/**
+ * Start proactive RAG search if we have party and user message
+ */
+function startProactiveRAG(
+  party: (typeof PARTIES)[number] | null,
+  messages: Array<{ content?: string }>,
+  partyShortName: string | undefined,
+  requestId: string
+): void {
+  if (!party || messages.length === 0) {
+    return;
+  }
+
+  const lastMessage = messages.at(-1);
+  if (!lastMessage?.content || typeof lastMessage.content !== 'string') {
+    return;
+  }
+
+  const cacheKey = `${partyShortName}-${lastMessage.content}`;
+
+  // Check if we already have this search cached
+  if (proactiveRAGCache.has(cacheKey)) {
+    performanceLogger.logMilestone(requestId, 'proactive-rag-cache-hit', {
+      partyShortName,
+      cacheKey: cacheKey.substring(0, CACHE_KEY_SUBSTRING_LENGTH),
+    });
+    return;
+  }
+
+  performanceLogger.logMilestone(requestId, 'proactive-rag-started', {
+    partyShortName,
+    questionLength: lastMessage.content.length,
+  });
+
+  // Start the RAG search proactively
+  const proactiveRAGPromise = findRelevantContent(
+    lastMessage.content,
+    partyShortName || '',
+    DEFAULT_CONTENT_LIMIT,
+    DEFAULT_SIMILARITY_THRESHOLD,
+    requestId
+  );
+
+  proactiveRAGCache.set(cacheKey, proactiveRAGPromise);
+
+  // Clean up cache after 5 minutes to prevent memory leaks
+  setTimeout(() => {
+    proactiveRAGCache.delete(cacheKey);
+  }, CACHE_CLEANUP_DELAY);
+}
+
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
   partyShortName: z
@@ -118,10 +180,15 @@ export const appRouter = {
       }
     }
 
+    // Proactive RAG: Start searching immediately if we have a party and user message
+    startProactiveRAG(party, messages, partyShortName, requestId);
+
     performanceLogger.logMilestone(requestId, 'model-stream-starting', {
       model: MODEL,
       maxSteps: MAX_STEPS,
-      systemPromptLength: party ? 200 : 80, // approximate
+      systemPromptLength: party
+        ? SYSTEM_PROMPT_LENGTH_WITH_PARTY
+        : SYSTEM_PROMPT_LENGTH_NO_PARTY,
     });
 
     const result = streamText({
@@ -141,11 +208,12 @@ export const appRouter = {
         : 'Du er en nyttig assistent som kan svare på generelle spørsmål.',
       tools: {
         getPartyInformation: tool({
-          description: `Hent informasjon fra ${party?.name || 'parti'}programmet for å svare på spørsmål`,
-          inputSchema: z.object({
-            question: z.string().describe('Brukerens spørsmål'),
-          }),
-          execute: async ({ question }) => {
+          description: `Hent informasjon fra ${party?.name || 'parti'}programmet for å svare på brukerens spørsmål`,
+          inputSchema: z.object({}),
+          execute: async () => {
+            // Use the user's original message directly for cache matching
+            const lastMessage = messages.at(-1);
+            const question = lastMessage?.content || '';
             try {
               performanceLogger.logMilestone(
                 requestId,
@@ -157,10 +225,58 @@ export const appRouter = {
                 }
               );
 
-              const { result: relevantContent } =
-                await performanceLogger.timeAsync(
+              // Always wait for proactive RAG results if available
+              const proactiveCacheKey = `${partyShortName}-${question}`;
+              let relevantContent: RetrievalResult[];
+
+              if (proactiveRAGCache.has(proactiveCacheKey)) {
+                performanceLogger.logMilestone(
                   requestId,
-                  'tool-rag-search',
+                  'waiting-for-proactive-rag',
+                  {
+                    cacheKey: proactiveCacheKey.substring(
+                      0,
+                      CACHE_KEY_SUBSTRING_LENGTH
+                    ),
+                  }
+                );
+
+                // Wait for the proactive search to complete
+                const proactivePromise =
+                  proactiveRAGCache.get(proactiveCacheKey);
+                if (!proactivePromise) {
+                  throw new Error('Proactive RAG promise not found in cache');
+                }
+
+                const { result: proactiveResult } =
+                  await performanceLogger.timeAsync(
+                    requestId,
+                    'proactive-rag-wait',
+                    () => proactivePromise,
+                    {
+                      cacheKey: proactiveCacheKey.substring(
+                        0,
+                        CACHE_KEY_SUBSTRING_LENGTH
+                      ),
+                    }
+                  );
+                relevantContent = proactiveResult;
+
+                // Clean up the cache entry since we've used it
+                proactiveRAGCache.delete(proactiveCacheKey);
+              } else {
+                // Fallback to traditional RAG search if no proactive results
+                performanceLogger.logMilestone(
+                  requestId,
+                  'fallback-to-traditional-rag',
+                  {
+                    questionLength: question.length,
+                  }
+                );
+
+                const { result: ragResult } = await performanceLogger.timeAsync(
+                  requestId,
+                  'tool-rag-search-fallback',
                   () =>
                     findRelevantContent(
                       question,
@@ -174,6 +290,8 @@ export const appRouter = {
                     partyShortName: partyShortName || 'unknown',
                   }
                 );
+                relevantContent = ragResult;
+              }
 
               if (relevantContent.length === 0) {
                 return `Ingen relevant informasjon funnet i ${party?.name || 'parti'}programmet.`;
