@@ -16,3 +16,5 @@ node_modules
 CLAUDE.md
 CLAUDE.md.bak
 # END Ruler Generated Files
+
+performance-logs.jsonl

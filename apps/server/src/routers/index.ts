@@ -8,11 +8,16 @@ import {
   type RetrievalResult,
 } from '../lib/embedding-generator';
 import { publicProcedure } from '../lib/orpc';
+import {
+  generateRequestId,
+  performanceLogger,
+} from '../lib/performance-logger';
 
 // Constants for RAG
 const DEFAULT_CONTENT_LIMIT = 5;
 const DEFAULT_SIMILARITY_THRESHOLD = 0.6;
 const MAX_STEPS = 5;
+const MODEL = 'openai/gpt-4o';
 
 const chatInputSchema = z.object({
   messages: z.array(z.any()).describe('Array of UI messages from the chat'),
@@ -93,18 +98,34 @@ export const appRouter = {
 
   chat: publicProcedure.input(chatInputSchema).handler(({ input }) => {
     const { messages, partyShortName } = input;
+    const requestId = generateRequestId();
+
+    // Start performance tracking session
+    performanceLogger.startSession(requestId);
+    performanceLogger.logMilestone(requestId, 'chat-request-received', {
+      messageCount: messages.length,
+      partyShortName: partyShortName || null,
+      lastMessageLength: messages.at(-1)?.content?.length || 0,
+    });
 
     // Find the party information if partyShortName is provided
     let party: (typeof PARTIES)[number] | null = null;
     if (partyShortName) {
       party = PARTIES.find((p) => p.shortName === partyShortName) || null;
       if (!party) {
+        performanceLogger.endSession(requestId);
         throw new Error(`Party not found: ${partyShortName}`);
       }
     }
 
+    performanceLogger.logMilestone(requestId, 'model-stream-starting', {
+      model: MODEL,
+      maxSteps: MAX_STEPS,
+      systemPromptLength: party ? 200 : 80, // approximate
+    });
+
     const result = streamText({
-      model: openrouter('openai/gpt-5-mini'),
+      model: openrouter(MODEL),
       messages: convertToModelMessages(messages),
       stopWhen: stepCountIs(MAX_STEPS),
       providerOptions: {
@@ -126,54 +147,100 @@ export const appRouter = {
           }),
           execute: async ({ question }) => {
             try {
-              const relevantContent = await findRelevantContent(
-                question,
-                partyShortName || '',
-                DEFAULT_CONTENT_LIMIT,
-                DEFAULT_SIMILARITY_THRESHOLD
+              performanceLogger.logMilestone(
+                requestId,
+                'tool-execution-started',
+                {
+                  toolName: 'getPartyInformation',
+                  questionLength: question.length,
+                  partyShortName: partyShortName || 'unknown',
+                }
               );
+
+              const { result: relevantContent } =
+                await performanceLogger.timeAsync(
+                  requestId,
+                  'tool-rag-search',
+                  () =>
+                    findRelevantContent(
+                      question,
+                      partyShortName || '',
+                      DEFAULT_CONTENT_LIMIT,
+                      DEFAULT_SIMILARITY_THRESHOLD,
+                      requestId
+                    ),
+                  {
+                    questionLength: question.length,
+                    partyShortName: partyShortName || 'unknown',
+                  }
+                );
 
               if (relevantContent.length === 0) {
                 return `Ingen relevant informasjon funnet i ${party?.name || 'parti'}programmet.`;
               }
 
-              // Format content with citation markers
-              let responseText = '';
-              const citations: Array<{
-                content: string;
-                chapterTitle?: string;
-                pageNumber?: number;
-                similarity: number;
-              }> = [];
+              // Format content with citation markers - timed for response formatting
+              const { result: formattedResponse } = performanceLogger.timeSync(
+                requestId,
+                'tool-response-formatting',
+                () => {
+                  let responseText = '';
+                  const citations: Array<{
+                    content: string;
+                    chapterTitle?: string;
+                    pageNumber?: number;
+                    similarity: number;
+                  }> = [];
 
-              relevantContent.forEach((content: RetrievalResult, index) => {
-                const citationNumber = index + 1;
-                citations.push({
-                  content: content.content,
-                  chapterTitle: content.chapterTitle,
-                  pageNumber: content.pageNumber,
-                  similarity: content.similarity,
-                });
+                  relevantContent.forEach((content: RetrievalResult, index) => {
+                    const citationNumber = index + 1;
+                    citations.push({
+                      content: content.content,
+                      chapterTitle: content.chapterTitle,
+                      pageNumber: content.pageNumber,
+                      similarity: content.similarity,
+                    });
 
-                if (index === 0) {
-                  responseText = `Basert på ${party?.name || 'parti'}programmet: ${content.content} [${citationNumber}]`;
-                } else {
-                  responseText += ` Videre står det at ${content.content} [${citationNumber}]`;
+                    if (index === 0) {
+                      responseText = `Basert på ${party?.name || 'parti'}programmet: ${content.content} [${citationNumber}]`;
+                    } else {
+                      responseText += ` Videre står det at ${content.content} [${citationNumber}]`;
+                    }
+                  });
+
+                  // Return structured data that the AI can use to form a response with citations
+                  return JSON.stringify({
+                    text: responseText,
+                    citations: citations.map((citation, index) => ({
+                      id: index + 1,
+                      content: citation.content,
+                      chapterTitle: citation.chapterTitle || 'Ukjent kapittel',
+                      pageNumber: citation.pageNumber,
+                      similarity: citation.similarity,
+                      source: `${party?.name} Partiprogram${citation.pageNumber ? ` - Side ${citation.pageNumber}` : ''}`,
+                    })),
+                  });
+                },
+                {
+                  resultsCount: relevantContent.length,
+                  totalContentLength: relevantContent.reduce(
+                    (sum, r) => sum + r.content.length,
+                    0
+                  ),
                 }
-              });
+              );
 
-              // Return structured data that the AI can use to form a response with citations
-              return JSON.stringify({
-                text: responseText,
-                citations: citations.map((citation, index) => ({
-                  id: index + 1,
-                  content: citation.content,
-                  chapterTitle: citation.chapterTitle || 'Ukjent kapittel',
-                  pageNumber: citation.pageNumber,
-                  similarity: citation.similarity,
-                  source: `${party?.name} Partiprogram${citation.pageNumber ? ` - Side ${citation.pageNumber}` : ''}`,
-                })),
-              });
+              performanceLogger.logMilestone(
+                requestId,
+                'tool-execution-completed',
+                {
+                  toolName: 'getPartyInformation',
+                  resultsFound: relevantContent.length,
+                  responseLength: formattedResponse.length,
+                }
+              );
+
+              return formattedResponse;
             } catch (_error) {
               return `Feil ved henting av informasjon fra ${party?.name || 'parti'}programmet.`;
             }
@@ -181,6 +248,16 @@ export const appRouter = {
         }),
       },
     });
+
+    performanceLogger.logMilestone(requestId, 'stream-initiated', {
+      model: MODEL,
+      hasParty: !!party,
+      toolsAvailable: 1,
+    });
+
+    // Note: We cannot await the stream completion here as it's streamed to client
+    // The session will be ended when the stream processing completes on client side
+    // For now, we'll track stream initiation time
 
     return streamToEventIterator(result.toUIMessageStream());
   }),
