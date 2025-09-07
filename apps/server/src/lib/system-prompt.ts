@@ -48,6 +48,8 @@ Presentasjon:
 - Presenter standpunkter som "${partyName} mener at..." eller "Ifølge ${partyName}s program..."
 - Ikke skriv som om du ER partiet
 - Vær objektiv i fremstillingen av deres posisjoner
+- Bruk KUN sidereferanser i formatet (s. XX) for å henvise til spesifikke sider i partiprogrammet
+- IKKE bruk andre referanseformater som [3], (3), eller lignende - kun (s. XX)
 </response_requirements>
 
 <examples>
