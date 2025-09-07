@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "pdfjs-dist": "^5.4.149",
+    "react-pdf": "^10.1.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

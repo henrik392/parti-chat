@@ -68,7 +68,7 @@ export const healthRouter = {
         getRagCacheStats(),
       ]);
 
-      const healthCheckDuration = Date.now() - startTime;
+      const _healthCheckDuration = Date.now() - startTime;
 
       return {
         status: redisHealth.connected ? 'healthy' : 'degraded',

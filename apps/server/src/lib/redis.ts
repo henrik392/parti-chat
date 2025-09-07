@@ -6,8 +6,13 @@ let connectionAttempts = 0;
 let lastConnectionError: Error | null = null;
 
 const MAX_RETRIES = 3;
-const COMMAND_TIMEOUT = 5000; // 5 seconds
 const CONNECTION_TIMEOUT = 10_000; // 10 seconds
+const RETRY_BASE_DELAY = 1000; // 1 second
+const MAX_RETRY_DELAY = 5000; // 5 seconds
+const KB_IN_BYTES = 1024;
+const BYTES_TO_MB = KB_IN_BYTES * KB_IN_BYTES;
+const PRECISION_MULTIPLIER = 100;
+const SLOW_COMMAND_THRESHOLD = 1000; // 1 second
 
 export async function getRedisClient() {
   if (!client) {
@@ -78,7 +83,10 @@ export async function getRedisClient() {
       if (connectionAttempts < MAX_RETRIES) {
         // Wait before retry with exponential backoff
         await new Promise((resolve) =>
-          setTimeout(resolve, Math.min(connectionAttempts * 1000, 5000))
+          setTimeout(
+            resolve,
+            Math.min(connectionAttempts * RETRY_BASE_DELAY, MAX_RETRY_DELAY)
+          )
         );
         return getRedisClient(); // Recursive retry
       }
@@ -137,7 +145,8 @@ export async function getRedisHealth(): Promise<{
     const pingLatency = Date.now() - startTime;
 
     // Get Redis info
-    const info = await client.info();
+    // Get basic info (not used directly but helps with monitoring)
+    await client.info();
     const memoryInfo = await client.info('memory');
     const statsInfo = await client.info('stats');
 
@@ -147,7 +156,7 @@ export async function getRedisHealth(): Promise<{
       for (const line of infoStr.split('\r\n')) {
         if (line.includes(':')) {
           const [key, value] = line.split(':');
-          result[key] = isNaN(Number(value)) ? value : Number(value);
+          result[key] = Number.isNaN(Number(value)) ? value : Number(value);
         }
       }
       return result;
@@ -168,8 +177,8 @@ export async function getRedisHealth(): Promise<{
       connectionTime: pingLatency,
       info: {
         memory: {
-          used: `${Math.round(((memData.used_memory as number) / 1024 / 1024) * 100) / 100}MB`,
-          peak: `${Math.round(((memData.used_memory_peak as number) / 1024 / 1024) * 100) / 100}MB`,
+          used: `${Math.round(((memData.used_memory as number) / BYTES_TO_MB) * PRECISION_MULTIPLIER) / PRECISION_MULTIPLIER}MB`,
+          peak: `${Math.round(((memData.used_memory_peak as number) / BYTES_TO_MB) * PRECISION_MULTIPLIER) / PRECISION_MULTIPLIER}MB`,
           fragmentation: `${memData.mem_fragmentation_ratio}`,
         },
         stats: {
@@ -234,7 +243,7 @@ export async function executeRedisCommand<T>(
 
     // Log slow commands (> 1 second) as warnings
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
+    if (duration > SLOW_COMMAND_THRESHOLD) {
       performanceLogger.logMilestone(reqId, 'redis-slow-command', {
         command: commandName,
         duration,
