@@ -5,6 +5,12 @@ import { db } from '../../../db';
 import { embeddings, parties, partyPrograms } from '../../../db/schema';
 import { performanceLogger } from '../../../lib/performance-logger';
 import type { EmbeddingResult, RetrievalResult } from '../types';
+import {
+  cacheEmbedding,
+  cacheRagResults,
+  getCachedEmbedding,
+  getCachedRagResults,
+} from './rag-cache-service';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
 
@@ -43,6 +49,19 @@ export async function generateSingleEmbedding(
   try {
     const input = text.replace(/\\n/g, ' ').trim();
 
+    // Try to get cached embedding first
+    const cachedEmbedding = await getCachedEmbedding(input);
+    if (cachedEmbedding) {
+      performanceLogger.logMilestone(reqId, 'embedding-cache-hit', {
+        inputLength: input.length,
+      });
+      return cachedEmbedding;
+    }
+
+    performanceLogger.logMilestone(reqId, 'embedding-cache-miss', {
+      inputLength: input.length,
+    });
+
     const { result: embedding } = await performanceLogger.timeAsync(
       reqId,
       'openai-embedding-generation',
@@ -58,6 +77,9 @@ export async function generateSingleEmbedding(
         model: 'text-embedding-ada-002',
       }
     );
+
+    // Cache the embedding for future use
+    await cacheEmbedding(input, embedding);
 
     return embedding;
   } catch (error) {
@@ -88,6 +110,32 @@ export async function findRelevantContent({
   const reqId = requestId || 'unknown';
 
   try {
+    // Check cache first
+    const cachedResults = await getCachedRagResults({
+      query,
+      partyShortName,
+      limit,
+      minSimilarity,
+    });
+
+    if (cachedResults) {
+      performanceLogger.logMilestone(reqId, 'rag-search-cache-hit', {
+        partyShortName,
+        resultsCount: cachedResults.length,
+        avgSimilarity:
+          cachedResults.length > 0
+            ? cachedResults.reduce((sum, r) => sum + r.similarity, 0) /
+              cachedResults.length
+            : 0,
+      });
+      return cachedResults;
+    }
+
+    performanceLogger.logMilestone(reqId, 'rag-search-cache-miss', {
+      partyShortName,
+      queryLength: query.length,
+    });
+
     // Time the embedding generation
     const queryEmbedding = await generateSingleEmbedding(query, reqId);
 
@@ -137,6 +185,15 @@ export async function findRelevantContent({
       chapterTitle: result.chapterTitle || undefined,
       pageNumber: result.pageNumber || undefined,
     }));
+
+    // Cache the results
+    await cacheRagResults({
+      query,
+      partyShortName,
+      limit,
+      minSimilarity,
+      results: mappedResults,
+    });
 
     performanceLogger.logMilestone(reqId, 'rag-search-completed', {
       partyShortName,
