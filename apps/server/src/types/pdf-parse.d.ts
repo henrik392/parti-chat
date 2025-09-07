@@ -2,12 +2,15 @@ declare module 'pdf-parse' {
   type PDFData = {
     numpages: number;
     numrender: number;
-    info: any;
-    metadata: any;
+    info: Record<string, unknown>;
+    metadata: Record<string, unknown>;
     text: string;
     version: string;
   };
 
-  function parse(buffer: Buffer, options?: any): Promise<PDFData>;
+  function parse(
+    buffer: Buffer,
+    options?: Record<string, unknown>
+  ): Promise<PDFData>;
   export = parse;
 }

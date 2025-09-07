@@ -30,7 +30,7 @@ const PARTY_DATA = [
   { shortName: 'h', name: 'Høyre', color: '#0084d1' },
   { shortName: 'krf', name: 'Kristelig Folkeparti', color: '#f4a11e' },
   { shortName: 'mdg', name: 'Miljøpartiet De Grønne', color: '#4a7c24' },
-  { shortName: 'rødt', name: 'Rødt', color: '#d2001f' },
+  { shortName: 'r', name: 'Rødt', color: '#d2001f' },
   { shortName: 'sp', name: 'Senterpartiet', color: '#00a950' },
   { shortName: 'sv', name: 'Sosialistisk Venstreparti', color: '#dc143c' },
   { shortName: 'v', name: 'Venstre', color: '#00a651' },

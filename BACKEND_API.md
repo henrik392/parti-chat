@@ -24,7 +24,7 @@ type Party = {
   { id: 'h', name: 'Høyre', shortName: 'H', color: '#0065F1' },
   { id: 'krf', name: 'Kristelig Folkeparti', shortName: 'KrF', color: '#F9C835' },
   { id: 'mdg', name: 'Miljøpartiet De Grønne', shortName: 'MDG', color: '#4B9F44' },
-  { id: 'rodt', name: 'Rødt', shortName: 'Rødt', color: '#D50000' },
+  { id: 'rodt', name: 'Rødt', shortName: 'R', color: '#D50000' },
   { id: 'sp', name: 'Senterpartiet', shortName: 'SP', color: '#00843D' },
   { id: 'sv', name: 'Sosialistisk Venstreparti', shortName: 'SV', color: '#C4002C' },
   { id: 'v', name: 'Venstre', shortName: 'V', color: '#006B38' }

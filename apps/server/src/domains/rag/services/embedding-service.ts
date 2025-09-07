@@ -1,23 +1,12 @@
 import { openai } from '@ai-sdk/openai';
 import { embed, embedMany } from 'ai';
 import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm';
-import { db } from '../db';
-import { embeddings, parties, partyPrograms } from '../db/schema';
-import { performanceLogger } from './performance-logger';
+import { db } from '../../../db';
+import { embeddings, parties, partyPrograms } from '../../../db/schema';
+import { performanceLogger } from '../../../lib/performance-logger';
+import type { EmbeddingResult, RetrievalResult } from '../types';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
-
-export type EmbeddingResult = {
-  embedding: number[];
-  content: string;
-};
-
-export type RetrievalResult = {
-  content: string;
-  similarity: number;
-  chapterTitle?: string;
-  pageNumber?: number;
-};
 
 /**
  * Generate embeddings for multiple text chunks
@@ -81,13 +70,21 @@ export async function generateSingleEmbedding(
 /**
  * Find relevant content for a query from a specific party
  */
-export async function findRelevantContent(
-  query: string,
-  partyShortName: string,
+type FindRelevantContentOptions = {
+  query: string;
+  partyShortName: string;
+  limit?: number;
+  minSimilarity?: number;
+  requestId?: string;
+};
+
+export async function findRelevantContent({
+  query,
+  partyShortName,
   limit = 8,
   minSimilarity = 0.6,
-  requestId?: string
-): Promise<RetrievalResult[]> {
+  requestId,
+}: FindRelevantContentOptions): Promise<RetrievalResult[]> {
   const reqId = requestId || 'unknown';
 
   try {

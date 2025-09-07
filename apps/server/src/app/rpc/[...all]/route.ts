@@ -4,6 +4,7 @@ import { createContext } from '@/lib/context';
 import { generateRequestId, performanceLogger } from '@/lib/performance-logger';
 import { appRouter } from '@/routers';
 
+const USER_AGENT_MAX_LENGTH = 100;
 const handler = new RPCHandler(appRouter);
 
 async function handleRequest(req: NextRequest) {
@@ -17,7 +18,9 @@ async function handleRequest(req: NextRequest) {
     {
       method: req.method,
       url: req.url,
-      userAgent: req.headers.get('user-agent')?.substring(0, 100) || 'unknown',
+      userAgent:
+        req.headers.get('user-agent')?.substring(0, USER_AGENT_MAX_LENGTH) ||
+        'unknown',
       contentLength: req.headers.get('content-length') || '0',
     }
   );

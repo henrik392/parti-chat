@@ -9,6 +9,10 @@ const REPO_OWNER = 'henrik392';
 const REPO_NAME = 'parti-chat';
 const REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
 
+// Star count formatting constants
+const THOUSAND_THRESHOLD = 1000;
+const STAR_FORMAT_PRECISION = 1;
+
 export function GitHubButton() {
   const [stars, setStars] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
