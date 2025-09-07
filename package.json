@@ -26,6 +26,7 @@
     "start": "turbo start"
   },
   "dependencies": {
+    "pdfjs-dist": "^5.4.149",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
