@@ -129,6 +129,7 @@ export default function RootLayout({
     <html lang="nb-NO" suppressHydrationWarning>
       <head>
         <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data requires script injection
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
           }}

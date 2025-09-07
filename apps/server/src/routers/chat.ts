@@ -2,9 +2,13 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { streamToEventIterator } from '@orpc/server';
 import { convertToModelMessages, streamText } from 'ai';
 import { z } from 'zod';
-import { getSystemPrompt, MODEL } from '../domains/chat';
-import { getPartyName, partyExists } from '../domains/parties';
-import { buildRagContext } from '../domains/rag';
+import { MODEL } from '../domains/chat/constants/model';
+import { getSystemPrompt } from '../domains/chat/services/system-prompt-service';
+import {
+  getPartyName,
+  partyExists,
+} from '../domains/parties/services/party-service';
+import { buildRagContext } from '../domains/rag/services/rag-context-service';
 import { publicProcedure } from '../lib/orpc';
 import {
   generateRequestId,

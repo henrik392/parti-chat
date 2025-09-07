@@ -45,8 +45,8 @@ export function GitHubButton() {
   }, []);
 
   const formatStars = (count: number) => {
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}k`;
+    if (count >= THOUSAND_THRESHOLD) {
+      return `${(count / THOUSAND_THRESHOLD).toFixed(STAR_FORMAT_PRECISION)}k`;
     }
     return count.toString();
   };
