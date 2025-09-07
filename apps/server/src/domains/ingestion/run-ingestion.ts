@@ -5,7 +5,7 @@ import { ingestAllPartyPrograms } from './party-ingestion';
 async function runIngestion() {
   try {
     const result = await ingestAllPartyPrograms(
-      '/Users/henrikkvamme/development/fun/parti-chat/party-program',
+      '/Users/henrikkvamme/development/fun/parti-chat/apps/web/public/party-program',
       (progress) => {
         for (const p of progress) {
           const statusEmoji = getStatusEmoji(p.status);

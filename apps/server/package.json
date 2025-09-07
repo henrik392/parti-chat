@@ -11,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:setup": "bun run src/lib/setup-database.ts",
-    "ingest:parties": "bun run src/lib/run-ingestion.ts",
+    "ingest:parties": "bun run src/domains/ingestion/run-ingestion.ts",
     "db:start": "docker compose up -d",
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
