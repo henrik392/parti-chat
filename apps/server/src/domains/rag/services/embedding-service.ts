@@ -50,7 +50,7 @@ export async function generateSingleEmbedding(
     const input = text.replace(/\\n/g, ' ').trim();
 
     // Try to get cached embedding first
-    const cachedEmbedding = await getCachedEmbedding(input);
+    const cachedEmbedding = await getCachedEmbedding(input, reqId);
     if (cachedEmbedding) {
       performanceLogger.logMilestone(reqId, 'embedding-cache-hit', {
         inputLength: input.length,
@@ -79,7 +79,7 @@ export async function generateSingleEmbedding(
     );
 
     // Cache the embedding for future use
-    await cacheEmbedding(input, embedding);
+    await cacheEmbedding(input, embedding, reqId);
 
     return embedding;
   } catch (error) {
@@ -116,6 +116,7 @@ export async function findRelevantContent({
       partyShortName,
       limit,
       minSimilarity,
+      requestId: reqId,
     });
 
     if (cachedResults) {
@@ -193,6 +194,7 @@ export async function findRelevantContent({
       limit,
       minSimilarity,
       results: mappedResults,
+      requestId: reqId,
     });
 
     performanceLogger.logMilestone(reqId, 'rag-search-completed', {
