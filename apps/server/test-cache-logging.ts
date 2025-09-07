@@ -1,16 +1,20 @@
 #!/usr/bin/env bun
+
 /**
  * Simple test script to verify cache logging functionality
  * Run with: bun run test-cache-logging.ts
  */
 
-import { generateRequestId, performanceLogger } from './src/lib/performance-logger';
 import {
   cacheEmbedding,
   cacheRagResults,
   getCachedEmbedding,
   getCachedRagResults,
 } from './src/domains/rag/services/rag-cache-service';
+import {
+  generateRequestId,
+  performanceLogger,
+} from './src/lib/performance-logger';
 
 async function testCacheLogging() {
   const requestId = generateRequestId();
@@ -27,7 +31,10 @@ async function testCacheLogging() {
 
     // First call - should be a cache miss and write
     const cachedEmbedding1 = await getCachedEmbedding(testText, requestId);
-    console.log('First embedding lookup (should be miss):', cachedEmbedding1 ? 'HIT' : 'MISS');
+    console.log(
+      'First embedding lookup (should be miss):',
+      cachedEmbedding1 ? 'HIT' : 'MISS'
+    );
 
     // Cache the embedding
     await cacheEmbedding(testText, mockEmbedding, requestId);
@@ -35,7 +42,10 @@ async function testCacheLogging() {
 
     // Second call - should be a cache hit
     const cachedEmbedding2 = await getCachedEmbedding(testText, requestId);
-    console.log('Second embedding lookup (should be hit):', cachedEmbedding2 ? 'HIT' : 'MISS');
+    console.log(
+      'Second embedding lookup (should be hit):',
+      cachedEmbedding2 ? 'HIT' : 'MISS'
+    );
 
     // Test RAG cache
     console.log('\n🔍 Testing RAG search cache...');
@@ -52,7 +62,10 @@ async function testCacheLogging() {
       minSimilarity: 0.6,
       requestId,
     });
-    console.log('First RAG lookup (should be miss):', cachedResults1 ? 'HIT' : 'MISS');
+    console.log(
+      'First RAG lookup (should be miss):',
+      cachedResults1 ? 'HIT' : 'MISS'
+    );
 
     // Cache the results
     await cacheRagResults({
@@ -73,15 +86,19 @@ async function testCacheLogging() {
       minSimilarity: 0.6,
       requestId,
     });
-    console.log('Second RAG lookup (should be hit):', cachedResults2 ? 'HIT' : 'MISS');
-
+    console.log(
+      'Second RAG lookup (should be hit):',
+      cachedResults2 ? 'HIT' : 'MISS'
+    );
   } catch (error) {
     console.error('❌ Test failed:', error);
   } finally {
     // End performance session
     performanceLogger.endSession(requestId);
-    
-    console.log('\n📋 Check the performance-logs.jsonl file for detailed metrics');
+
+    console.log(
+      '\n📋 Check the performance-logs.jsonl file for detailed metrics'
+    );
     console.log('Look for operations like:');
     console.log('  - embedding-cache-read (miss/hit)');
     console.log('  - embedding-cache-write');

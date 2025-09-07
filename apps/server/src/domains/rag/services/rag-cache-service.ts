@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { performanceLogger } from '../../../lib/performance-logger';
-import { getRedisClient } from '../../../lib/redis';
+import { executeRedisCommand, getRedisClient } from '../../../lib/redis';
 import type { RetrievalResult } from '../types';
 
 const RAG_CACHE_TTL = 60 * 60 * 24; // 24 hours
@@ -76,7 +76,11 @@ export async function cacheRagResults(params: {
       timestamp: Date.now(),
     };
 
-    await redis.setEx(key, RAG_CACHE_TTL, JSON.stringify(cached));
+    await executeRedisCommand(
+      'setex',
+      () => redis.setEx(key, RAG_CACHE_TTL, JSON.stringify(cached)),
+      reqId
+    );
 
     performanceLogger.endTimer(reqId, 'rag-cache-write', startTime, {
       status: 'success',
@@ -119,7 +123,11 @@ export async function getCachedRagResults(params: {
       minSimilarity
     );
 
-    const cached = await redis.get(key);
+    const cached = await executeRedisCommand(
+      'get',
+      () => redis.get(key),
+      reqId
+    );
     if (!cached) {
       performanceLogger.endTimer(reqId, 'rag-cache-read', startTime, {
         status: 'miss',
@@ -175,7 +183,11 @@ export async function cacheEmbedding(
       timestamp: Date.now(),
     };
 
-    await redis.setEx(key, EMBEDDING_CACHE_TTL, JSON.stringify(cached));
+    await executeRedisCommand(
+      'setex',
+      () => redis.setEx(key, EMBEDDING_CACHE_TTL, JSON.stringify(cached)),
+      reqId
+    );
 
     performanceLogger.endTimer(reqId, 'embedding-cache-write', startTime, {
       status: 'success',
@@ -211,7 +223,11 @@ export async function getCachedEmbedding(
     const redis = await getRedisClient();
     const key = generateEmbeddingCacheKey(text);
 
-    const cached = await redis.get(key);
+    const cached = await executeRedisCommand(
+      'get',
+      () => redis.get(key),
+      reqId
+    );
     if (!cached) {
       performanceLogger.endTimer(reqId, 'embedding-cache-read', startTime, {
         status: 'miss',
@@ -245,10 +261,14 @@ export async function getCachedEmbedding(
 export async function clearRagCache(): Promise<void> {
   try {
     const redis = await getRedisClient();
-    const keys = await redis.keys('rag:*');
+    const keys = await executeRedisCommand(
+      'keys',
+      () => redis.keys('rag:*'),
+      'cache-clear'
+    );
 
     if (keys.length > 0) {
-      await redis.del(keys);
+      await executeRedisCommand('del', () => redis.del(keys), 'cache-clear');
     }
   } catch (_error) {
     // Cache clearing is non-critical
@@ -265,8 +285,16 @@ export async function getRagCacheStats(): Promise<{
   try {
     const redis = await getRedisClient();
     const [searchKeys, embeddingKeys] = await Promise.all([
-      redis.keys('rag:search:*'),
-      redis.keys('rag:embedding:*'),
+      executeRedisCommand(
+        'keys',
+        () => redis.keys('rag:search:*'),
+        'cache-stats'
+      ),
+      executeRedisCommand(
+        'keys',
+        () => redis.keys('rag:embedding:*'),
+        'cache-stats'
+      ),
     ]);
 
     return {
