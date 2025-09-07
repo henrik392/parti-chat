@@ -29,7 +29,7 @@ export function Reference({
       href={pdfUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800"
+      className="inline text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800 mx-0.5"
       title={`Åpne ${party.name} partiprogram på side ${pageNumber}`}
     >
       {children}
