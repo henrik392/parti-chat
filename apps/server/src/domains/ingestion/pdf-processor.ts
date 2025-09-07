@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import pdf from 'pdf-parse';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import { v4 as uuidv4 } from 'uuid';
 
@@ -34,26 +34,53 @@ export type PDFChunk = {
 };
 
 /**
- * Main PDF processing function using pdf-parse
+ * Main PDF processing function using pdfjs-dist
  */
 export async function processPDF(filePath: string): Promise<ProcessedPDF> {
   try {
     const pdfBuffer = await fs.readFile(filePath);
-    const pdfData = await pdf(pdfBuffer);
+    
+    // Convert Buffer to Uint8Array for pdfjs-dist
+    const pdfData = new Uint8Array(pdfBuffer);
+    
+    // Load PDF document
+    const loadingTask = pdfjs.getDocument({ 
+      data: pdfData,
+      standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@5.4.149/standard_fonts/'
+    });
+    const pdfDoc = await loadingTask.promise;
+    
+    const processedPages: ProcessedPage[] = [];
+    let allText = '';
 
-    // pdf-parse doesn't provide page-by-page text, so we create a single "page"
-    const processedPages: ProcessedPage[] = [
-      {
-        pageNumber: 1,
-        text: pdfData.text.trim(),
-        hasText: pdfData.text.trim().length > 0,
-      },
-    ];
+    // Process each page
+    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+      const page = await pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      // Extract text from the page
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ')
+        .trim();
+      
+      processedPages.push({
+        pageNumber: pageNum,
+        text: pageText,
+        hasText: pageText.length > 0,
+      });
+
+      if (pageText) {
+        allText += pageText + '\n';
+      }
+    }
+
+    await pdfDoc.destroy();
 
     return {
       id: uuidv4(),
-      text: pdfData.text.trim(),
-      totalPages: pdfData.numpages,
+      text: allText.trim(),
+      totalPages: pdfDoc.numPages,
       pages: processedPages,
     };
   } catch (error) {
