@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { useCallback, useState } from 'react';
+import { ComparisonCard } from '@/components/comparison-card';
 import { PartyCard } from '@/components/party-card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSwipeNavigation } from '@/hooks/use-swipe-navigation';
@@ -40,17 +42,56 @@ export function PartyTabs({
   suggestions = [],
   onSuggestionClick,
 }: PartyTabsProps) {
-  const activeIndex = parties.findIndex(
-    (party) => party.shortName === activePartyShortName
+  // Track which parties have messages
+  const [partiesWithMessages, setPartiesWithMessages] = useState<Set<string>>(
+    new Set()
+  );
+
+  const handlePartyMessagesChange = useCallback(
+    (partyShortName: string, hasMessages: boolean) => {
+      setPartiesWithMessages((prev) => {
+        const newSet = new Set(prev);
+        if (hasMessages) {
+          newSet.add(partyShortName);
+        } else {
+          newSet.delete(partyShortName);
+        }
+        return newSet;
+      });
+
+      // Also call the original callback if provided
+      if (onPartyMessagesChange) {
+        onPartyMessagesChange(partyShortName, hasMessages);
+      }
+    },
+    [onPartyMessagesChange]
+  );
+
+  // Determine if comparison tab should be shown (when 2+ parties have messages)
+  const showComparisonTab = partiesWithMessages.size >= 2;
+  const isComparisonActive = activePartyShortName === 'sammenligning';
+
+  // Build all available tabs (parties + comparison if applicable)
+  const allTabs = [...parties];
+  if (showComparisonTab) {
+    allTabs.push({
+      shortName: 'sammenligning',
+      name: 'Sammenligning',
+      color: '#6366f1', // Indigo color for comparison
+    } as Party);
+  }
+
+  const adjustedActiveIndex = allTabs.findIndex(
+    (tab) => tab.shortName === activePartyShortName
   );
 
   const { handlePanStart, handlePan, handlePanEnd, swipeState } =
     useSwipeNavigation({
-      activeIndex,
-      totalItems: parties.length,
+      activeIndex: adjustedActiveIndex,
+      totalItems: allTabs.length,
       onIndexChange: (newIndex) => {
-        if (parties[newIndex]) {
-          onTabChange(parties[newIndex].shortName);
+        if (allTabs[newIndex]) {
+          onTabChange(allTabs[newIndex].shortName);
         }
       },
     });
@@ -69,25 +110,28 @@ export function PartyTabs({
           value={activePartyShortName}
         >
           <TabsList className="scrollbar-hide relative mx-auto flex w-fit min-w-0 max-w-full justify-start gap-1.5 overflow-x-auto rounded-full bg-transparent px-2 py-5 ring-1 ring-border/40 backdrop-blur-sm supports-[backdrop-filter]:bg-background/30 sm:justify-center">
-            {parties.map((party) => {
-              const isActive = party.shortName === activePartyShortName;
+            {allTabs.map((tab) => {
+              const isActive = tab.shortName === activePartyShortName;
+              const isComparison = tab.shortName === 'sammenligning';
+
               return (
                 <TabsTrigger
                   className={cn(
                     'h-8 flex-shrink-0 rounded-full px-3 text-sm transition-colors data-[state=active]:text-white data-[state=active]:shadow-sm sm:px-8',
-                    'hover:bg-foreground/10 data-[state=active]:hover:brightness-110'
+                    'hover:bg-foreground/10 data-[state=active]:hover:brightness-110',
+                    isComparison && 'font-medium' // Make comparison tab slightly bolder
                   )}
-                  key={party.shortName}
+                  key={tab.shortName}
                   style={
                     {
                       '--tw-bg-opacity': isActive ? '1' : '0',
-                      backgroundColor: isActive ? party.color : undefined,
+                      backgroundColor: isActive ? tab.color : undefined,
                       color: isActive ? '#ffffff' : undefined,
                     } as React.CSSProperties
                   }
-                  value={party.shortName}
+                  value={tab.shortName}
                 >
-                  {party.shortName}
+                  {isComparison ? 'Sammenlign' : tab.shortName}
                 </TabsTrigger>
               );
             })}
@@ -116,16 +160,22 @@ export function PartyTabs({
           mass: SPRING_MASS,
         }}
       >
+        {/* Individual Party Cards */}
         {parties.map((party) => (
           <motion.div
             animate={{
-              opacity: party.shortName === activePartyShortName ? 1 : 0,
+              opacity:
+                party.shortName === activePartyShortName && !isComparisonActive
+                  ? 1
+                  : 0,
               scale:
-                party.shortName === activePartyShortName ? 1 : INACTIVE_SCALE,
+                party.shortName === activePartyShortName && !isComparisonActive
+                  ? 1
+                  : INACTIVE_SCALE,
             }}
             className={cn(
               'absolute inset-0',
-              party.shortName === activePartyShortName
+              party.shortName === activePartyShortName && !isComparisonActive
                 ? 'pointer-events-auto'
                 : 'pointer-events-none'
             )}
@@ -144,16 +194,53 @@ export function PartyTabs({
           >
             <PartyCard
               messageTrigger={messageTrigger}
-              onMessagesChange={onPartyMessagesChange}
+              onMessagesChange={handlePartyMessagesChange}
               onSuggestionClick={onSuggestionClick}
               party={party}
               showSuggestions={
-                showSuggestions && party.shortName === activePartyShortName
+                showSuggestions &&
+                party.shortName === activePartyShortName &&
+                !isComparisonActive
               }
               suggestions={suggestions}
             />
           </motion.div>
         ))}
+
+        {/* Comparison Card */}
+        {showComparisonTab && (
+          <motion.div
+            animate={{
+              opacity: isComparisonActive ? 1 : 0,
+              scale: isComparisonActive ? 1 : INACTIVE_SCALE,
+            }}
+            className={cn(
+              'absolute inset-0',
+              isComparisonActive ? 'pointer-events-auto' : 'pointer-events-none'
+            )}
+            initial={false}
+            key="comparison"
+            style={{
+              touchAction: 'pan-y pinch-zoom',
+            }}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 30,
+              duration: 0.2,
+            }}
+          >
+            <ComparisonCard
+              messageTrigger={messageTrigger}
+              onSuggestionClick={onSuggestionClick}
+              parties={parties.filter((p) =>
+                partiesWithMessages.has(p.shortName)
+              )}
+              showSuggestions={showSuggestions && isComparisonActive}
+              suggestions={suggestions}
+            />
+          </motion.div>
+        )}
       </motion.div>
     </div>
   );

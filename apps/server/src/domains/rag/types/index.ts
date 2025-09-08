@@ -22,6 +22,16 @@ export type RagContext = {
   userQuestion: string;
 };
 
+export type ComparisonRagContext = {
+  userQuestion: string;
+  partyContexts: Array<{
+    partyName: string;
+    partyShortName: string;
+    ragContext: RagContext | null;
+  }>;
+  totalResultsCount: number;
+};
+
 export type EmbeddingResult = {
   embedding: number[];
   content: string;

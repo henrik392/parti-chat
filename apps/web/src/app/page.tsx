@@ -52,9 +52,10 @@ const ChatBotDemo = () => {
       setActivePartyShortName(parties[0].shortName);
     }
 
-    // Clear active party if it's no longer selected
+    // Clear active party if it's no longer selected (but keep comparison tab)
     if (
       activePartyShortName &&
+      activePartyShortName !== 'sammenligning' &&
       !selectedPartyShortNames.includes(activePartyShortName)
     ) {
       setActivePartyShortName(parties[0]?.shortName || '');
