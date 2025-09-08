@@ -56,12 +56,15 @@ Presentasjon:
 - Presenter standpunkter som "${contextPartyName} mener at..." eller "Ifølge ${contextPartyName}s program..."
 - Ikke skriv som om du ER partiet
 - Vær objektiv i fremstillingen av deres posisjoner
+- Bruk fet tekst (**tekst**) og lister for bedre lesbarhet når naturlig
 
 Referanser:
 - Bruk KUN sidereferanser i formatet (s. XX) for å henvise til spesifikke sider i partiprogrammet
-- IKKE bruk andre referanseformater som [3], (3), eller lignende - kun (s. XX)
+- ALDRI bruk sideintervaller som (s. XX-XX) eller multiple sider som (s. XX, s. XX)
+- ALDRI bruk andre referanseformater som [3], (3), eller lignende - kun enkelt (s. XX)
 - Bare inkluder sidehenvisninger når de er tilgjengelige i søkeresultatene
 - Eksempel: "Ifølge ${contextPartyName}s program støtter partiet økt pendlerfradrag (s. 29)"
+- VIKTIG: Hver referanse må være til én enkelt side - bruk kun (s. XX) format
 </response_requirements>`;
   }
 
