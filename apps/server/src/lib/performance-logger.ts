@@ -6,7 +6,7 @@ type PerformanceMetric = {
   requestId: string;
   operation: string;
   duration: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   phase: 'start' | 'end' | 'milestone';
 };
 
@@ -61,7 +61,7 @@ class PerformanceLogger {
   startTimer(
     requestId: string,
     operation: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): number {
     const startTime = Date.now();
 
@@ -84,7 +84,7 @@ class PerformanceLogger {
     requestId: string,
     operation: string,
     startTime: number,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): number {
     const endTime = Date.now();
     const duration = endTime - startTime;
@@ -116,7 +116,7 @@ class PerformanceLogger {
   logMilestone(
     requestId: string,
     operation: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): void {
     this.logToFile({
       timestamp: new Date().toISOString(),
@@ -183,7 +183,7 @@ class PerformanceLogger {
     requestId: string,
     operation: string,
     fn: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<{ result: T; duration: number }> {
     const startTime = this.startTimer(requestId, operation, metadata);
 
@@ -195,7 +195,7 @@ class PerformanceLogger {
       });
       return { result, duration };
     } catch (error) {
-      const _duration = this.endTimer(requestId, operation, startTime, {
+      this.endTimer(requestId, operation, startTime, {
         ...metadata,
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -211,7 +211,7 @@ class PerformanceLogger {
     requestId: string,
     operation: string,
     fn: () => T,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): { result: T; duration: number } {
     const startTime = this.startTimer(requestId, operation, metadata);
 
@@ -223,7 +223,7 @@ class PerformanceLogger {
       });
       return { result, duration };
     } catch (error) {
-      const _duration = this.endTimer(requestId, operation, startTime, {
+      this.endTimer(requestId, operation, startTime, {
         ...metadata,
         status: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -237,9 +237,7 @@ class PerformanceLogger {
       const logLine = `${JSON.stringify(metric)}\n`;
       writeFileSync(this.logFilePath, logLine, { flag: 'a' });
     } catch (_error) {
-      // Fail silently in production, but log to console in development
-      if (process.env.NODE_ENV === 'development') {
-      }
+      // Fail silently in production - intentionally left empty
     }
   }
 
@@ -256,5 +254,8 @@ export const performanceLogger = new PerformanceLogger();
 
 // Convenience function to generate request IDs
 export function generateRequestId(): string {
-  return `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  const RADIX_BASE = 36;
+  const SUBSTRING_START = 2;
+  const SUBSTRING_END = 9;
+  return `req_${Date.now()}_${Math.random().toString(RADIX_BASE).substring(SUBSTRING_START, SUBSTRING_END)}`;
 }

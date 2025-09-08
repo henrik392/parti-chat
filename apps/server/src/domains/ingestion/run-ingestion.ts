@@ -1,23 +1,22 @@
 #!/usr/bin/env bun
 
-import logger from './logger';
 import { ingestAllPartyPrograms } from './party-ingestion';
 
 async function runIngestion() {
   try {
     const result = await ingestAllPartyPrograms(
-      '/Users/henrikkvamme/development/fun/parti-chat/party-program',
+      '/Users/henrikkvamme/development/fun/parti-chat/apps/web/public/party-program',
       (progress) => {
         for (const p of progress) {
           const statusEmoji = getStatusEmoji(p.status);
 
           if (p.error) {
-            logger.error(
+            console.error(
               { party: p.partyShortName, error: p.error },
               `${statusEmoji} Failed to process ${p.partyShortName}`
             );
           } else {
-            logger.info(
+            console.info(
               { party: p.partyShortName, status: p.status },
               `${statusEmoji} ${p.partyShortName}: ${p.message}`
             );
@@ -27,21 +26,21 @@ async function runIngestion() {
     );
 
     if (result.failed.length > 0) {
-      logger.error(
+      console.error(
         { failedCount: result.failed.length },
         'Some files failed to process'
       );
       for (const failed of result.failed) {
-        logger.error(
+        console.error(
           { party: failed.party, error: failed.error },
           `Failed: ${failed.party}`
         );
       }
     } else {
-      logger.info('All files processed successfully');
+      console.info('All files processed successfully');
     }
   } catch (error) {
-    logger.error({ error }, 'Ingestion process failed');
+    console.error({ error }, 'Ingestion process failed');
     process.exit(1);
   }
 }

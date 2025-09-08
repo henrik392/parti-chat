@@ -2,9 +2,9 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../db';
-import { embeddings, parties, partyPrograms } from '../db/schema';
-import { generateEmbeddings } from './embedding-generator';
+import { db } from '../../db';
+import { embeddings, parties, partyPrograms } from '../../db/schema';
+import { generateEmbeddings } from '../rag/services/embedding-service';
 import { chunkPDFContent, processPDF } from './pdf-processor';
 
 // Progress constants
@@ -23,17 +23,64 @@ const PROGRESS_THRESHOLD_CHUNKING = 70;
 const PROGRESS_THRESHOLD_EMBEDDING = 90;
 const PROGRESS_THRESHOLD_SAVING = 100;
 
-// Norwegian party data - you can expand this
+// Norwegian party data with PDF URLs
 const PARTY_DATA = [
-  { shortName: 'ap', name: 'Arbeiderpartiet', color: '#e30613' },
-  { shortName: 'frp', name: 'Fremskrittspartiet', color: '#003d82' },
-  { shortName: 'h', name: 'Høyre', color: '#0084d1' },
-  { shortName: 'krf', name: 'Kristelig Folkeparti', color: '#f4a11e' },
-  { shortName: 'mdg', name: 'Miljøpartiet De Grønne', color: '#4a7c24' },
-  { shortName: 'rødt', name: 'Rødt', color: '#d2001f' },
-  { shortName: 'sp', name: 'Senterpartiet', color: '#00a950' },
-  { shortName: 'sv', name: 'Sosialistisk Venstreparti', color: '#dc143c' },
-  { shortName: 'v', name: 'Venstre', color: '#00a651' },
+  {
+    shortName: 'ap',
+    name: 'Arbeiderpartiet',
+    color: '#e30613',
+    pdfUrl: 'https://www.arbeiderpartiet.no/om/program/',
+  },
+  {
+    shortName: 'frp',
+    name: 'Fremskrittspartiet',
+    color: '#003d82',
+    pdfUrl: 'https://www.frp.no/files/Program/2025/Program-2025-2029.pdf',
+  },
+  {
+    shortName: 'h',
+    name: 'Høyre',
+    color: '#0084d1',
+    pdfUrl: 'https://hoyre.no/politikk/partiprogram/',
+  },
+  {
+    shortName: 'krf',
+    name: 'Kristelig Folkeparti',
+    color: '#f4a11e',
+    pdfUrl: 'https://krf.no/politikk/politisk-program/',
+  },
+  {
+    shortName: 'mdg',
+    name: 'Miljøpartiet De Grønne',
+    color: '#4a7c24',
+    pdfUrl:
+      'https://mdg.no/_service/505809/download/id/1506077/name/MDGs+arbeidsprogram+2025-2029.pdf',
+  },
+  {
+    shortName: 'r',
+    name: 'Rødt',
+    color: '#d2001f',
+    pdfUrl: 'https://roedt.no/arbeidsprogram',
+  },
+  {
+    shortName: 'sp',
+    name: 'Senterpartiet',
+    color: '#00a950',
+    pdfUrl:
+      'https://www.senterpartiet.no/politikk/program-uttaler/Nytt%20prinsipp-%20og%20handlingsprogram%202025-2029',
+  },
+  {
+    shortName: 'sv',
+    name: 'Sosialistisk Venstreparti',
+    color: '#dc143c',
+    pdfUrl: 'https://www.sv.no/politikken/arbeidsprogram/',
+  },
+  {
+    shortName: 'v',
+    name: 'Venstre',
+    color: '#00a651',
+    pdfUrl: 'https://www.venstre.no/politikk/partiprogram/',
+  },
 ];
 
 export type IngestionProgress = {
@@ -179,12 +226,18 @@ async function ingestSinglePartyProgram(
         })
         .where(eq(partyPrograms.id, programId));
     } else {
+      // Find the party data to get PDF URL
+      const partyData = PARTY_DATA.find(
+        (p) => p.shortName.toLowerCase() === partyShortName.toLowerCase()
+      );
+
       await db.insert(partyPrograms).values({
         id: programId,
         partyId: party.id,
         title: `${party.name} Partiprogram 2025`, // You might want to extract this from PDF
         year: 2025, // You might want to extract this from filename or PDF
         filePath,
+        pdfUrl: partyData?.pdfUrl,
         extractedText: processedPDF.text,
         totalPages: processedPDF.totalPages,
         isProcessed: 'processing',
@@ -205,14 +258,16 @@ async function ingestSinglePartyProgram(
     await db.delete(embeddings).where(eq(embeddings.partyProgramId, programId));
 
     // Insert new embeddings
-    const embeddingsToInsert = embeddings_data.map((embedding, index) => ({
-      id: uuidv4(),
-      partyProgramId: programId,
-      content: chunks[index].content,
-      chapterTitle: chunks[index].chapterTitle,
-      pageNumber: chunks[index].pageNumber,
-      embedding: embedding.embedding,
-    }));
+    const embeddingsToInsert = embeddings_data.map(
+      (embedding: { embedding: number[] }, index: number) => ({
+        id: uuidv4(),
+        partyProgramId: programId,
+        content: chunks[index].content,
+        chapterTitle: chunks[index].chapterTitle,
+        pageNumber: chunks[index].pageNumber,
+        embedding: embedding.embedding,
+      })
+    );
 
     await db.insert(embeddings).values(embeddingsToInsert);
 

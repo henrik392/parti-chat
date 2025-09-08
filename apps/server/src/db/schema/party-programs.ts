@@ -9,7 +9,8 @@ export const partyPrograms = pgTable('party_programs', {
   title: text('title').notNull(),
   year: integer('year').notNull(), // e.g., 2021, 2025
   filePath: text('file_path').notNull(), // path to the PDF file
-  extractedText: text('extracted_text'), // OCR extracted text
+  pdfUrl: text('pdf_url'), // URL to the original PDF online
+  extractedText: text('extracted_text'), // extracted text
   totalPages: integer('total_pages'),
   isProcessed: text('is_processed').notNull().default('pending'), // 'pending', 'processing', 'completed', 'failed'
   processingError: text('processing_error'), // store error if processing fails

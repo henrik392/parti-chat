@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    return [
+    const rewrites = [
       {
         source: '/ingest/static/:path*',
         destination: 'https://eu-assets.i.posthog.com/static/:path*',
@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
         destination: 'https://eu.i.posthog.com/:path*',
       },
     ];
+    return await Promise.resolve(rewrites);
   },
   // This is required to support PostHog trailing slash API requests
   skipTrailingSlashRedirect: true,

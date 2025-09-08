@@ -1,23 +1,18 @@
 import { openai } from '@ai-sdk/openai';
 import { embed, embedMany } from 'ai';
 import { and, cosineDistance, desc, eq, gt, sql } from 'drizzle-orm';
-import { db } from '../db';
-import { embeddings, parties, partyPrograms } from '../db/schema';
-import { performanceLogger } from './performance-logger';
+import { db } from '../../../db';
+import { embeddings, parties, partyPrograms } from '../../../db/schema';
+import { performanceLogger } from '../../../lib/performance-logger';
+import type { EmbeddingResult, RetrievalResult } from '../types';
+import {
+  cacheEmbedding,
+  cacheRagResults,
+  getCachedEmbedding,
+  getCachedRagResults,
+} from './rag-cache-service';
 
 const embeddingModel = openai.embedding('text-embedding-ada-002');
-
-export type EmbeddingResult = {
-  embedding: number[];
-  content: string;
-};
-
-export type RetrievalResult = {
-  content: string;
-  similarity: number;
-  chapterTitle?: string;
-  pageNumber?: number;
-};
 
 /**
  * Generate embeddings for multiple text chunks
@@ -54,6 +49,19 @@ export async function generateSingleEmbedding(
   try {
     const input = text.replace(/\\n/g, ' ').trim();
 
+    // Try to get cached embedding first
+    const cachedEmbedding = await getCachedEmbedding(input, reqId);
+    if (cachedEmbedding) {
+      performanceLogger.logMilestone(reqId, 'embedding-cache-hit', {
+        inputLength: input.length,
+      });
+      return cachedEmbedding;
+    }
+
+    performanceLogger.logMilestone(reqId, 'embedding-cache-miss', {
+      inputLength: input.length,
+    });
+
     const { result: embedding } = await performanceLogger.timeAsync(
       reqId,
       'openai-embedding-generation',
@@ -70,6 +78,9 @@ export async function generateSingleEmbedding(
       }
     );
 
+    // Cache the embedding for future use
+    await cacheEmbedding(input, embedding, reqId);
+
     return embedding;
   } catch (error) {
     throw new Error(
@@ -81,16 +92,51 @@ export async function generateSingleEmbedding(
 /**
  * Find relevant content for a query from a specific party
  */
-export async function findRelevantContent(
-  query: string,
-  partyShortName: string,
-  limit = 5,
+type FindRelevantContentOptions = {
+  query: string;
+  partyShortName: string;
+  limit?: number;
+  minSimilarity?: number;
+  requestId?: string;
+};
+
+export async function findRelevantContent({
+  query,
+  partyShortName,
+  limit = 8,
   minSimilarity = 0.6,
-  requestId?: string
-): Promise<RetrievalResult[]> {
+  requestId,
+}: FindRelevantContentOptions): Promise<RetrievalResult[]> {
   const reqId = requestId || 'unknown';
 
   try {
+    // Check cache first
+    const cachedResults = await getCachedRagResults({
+      query,
+      partyShortName,
+      limit,
+      minSimilarity,
+      requestId: reqId,
+    });
+
+    if (cachedResults) {
+      performanceLogger.logMilestone(reqId, 'rag-search-cache-hit', {
+        partyShortName,
+        resultsCount: cachedResults.length,
+        avgSimilarity:
+          cachedResults.length > 0
+            ? cachedResults.reduce((sum, r) => sum + r.similarity, 0) /
+              cachedResults.length
+            : 0,
+      });
+      return cachedResults;
+    }
+
+    performanceLogger.logMilestone(reqId, 'rag-search-cache-miss', {
+      partyShortName,
+      queryLength: query.length,
+    });
+
     // Time the embedding generation
     const queryEmbedding = await generateSingleEmbedding(query, reqId);
 
@@ -140,6 +186,16 @@ export async function findRelevantContent(
       chapterTitle: result.chapterTitle || undefined,
       pageNumber: result.pageNumber || undefined,
     }));
+
+    // Cache the results
+    await cacheRagResults({
+      query,
+      partyShortName,
+      limit,
+      minSimilarity,
+      results: mappedResults,
+      requestId: reqId,
+    });
 
     performanceLogger.logMilestone(reqId, 'rag-search-completed', {
       partyShortName,

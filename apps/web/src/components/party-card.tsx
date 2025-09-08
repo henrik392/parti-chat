@@ -198,7 +198,9 @@ export function PartyCard({
                   if (part.type === 'text') {
                     return (
                       <div key={`${message.id}-${partIndex}`}>
-                        <Response>{part.text}</Response>
+                        <Response partyShortName={party.shortName}>
+                          {part.text}
+                        </Response>
                       </div>
                     );
                   }

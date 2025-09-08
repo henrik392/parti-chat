@@ -25,8 +25,8 @@
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": [
     "node_modules",
-    "src/lib/pdf-processor.ts",
-    "src/lib/party-ingestion.ts",
-    "src/lib/run-ingestion.ts"
+    "src/domains/ingestion/pdf-processor.ts",
+    "src/domains/ingestion/party-ingestion.ts",
+    "src/domains/ingestion/run-ingestion.ts"
   ]
 }
