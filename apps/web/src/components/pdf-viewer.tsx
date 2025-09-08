@@ -16,11 +16,11 @@ if (typeof window !== 'undefined') {
   // Try to use a working jsdelivr CDN first
   const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
   pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-  
+
   // Enable verbose logging for react-pdf debugging
   console.log('PDF.js version:', pdfjs.version);
   console.log('PDF.js worker src:', workerSrc);
-  
+
   // Test worker accessibility with a simple approach
   console.log('Testing PDF.js worker availability...');
 }
@@ -55,30 +55,34 @@ export function PDFViewer({
       console.log('Initial page:', initialPage);
       setIsLoading(true);
       setError(null);
-      
+
       // Test PDF accessibility
       if (typeof window !== 'undefined') {
         console.log('Testing PDF URL accessibility...');
         fetch(pdfPath)
-          .then(response => {
+          .then((response) => {
             console.log('PDF fetch response:', {
               status: response.status,
               statusText: response.statusText,
               headers: Object.fromEntries(response.headers.entries()),
-              url: response.url
+              url: response.url,
             });
-            if (!response.ok) {
-              console.error('PDF not accessible:', response.status, response.statusText);
-            } else {
+            if (response.ok) {
               console.log('PDF is accessible via fetch');
+            } else {
+              console.error(
+                'PDF not accessible:',
+                response.status,
+                response.statusText
+              );
             }
             return response.blob();
           })
-          .then(blob => {
+          .then((blob) => {
             console.log('PDF blob size:', blob.size, 'bytes');
             console.log('PDF blob type:', blob.type);
           })
-          .catch(error => {
+          .catch((error) => {
             console.error('PDF fetch failed:', error);
           });
       }
@@ -89,7 +93,7 @@ export function PDFViewer({
     console.log('PDF loaded successfully!', {
       numPages,
       pdfPath,
-      initialPage
+      initialPage,
     });
     setNumPages(numPages);
     setCurrentPage(initialPage);
@@ -104,7 +108,7 @@ export function PDFViewer({
       message: error.message,
       name: error.name,
       stack: error.stack,
-      cause: error.cause
+      cause: error.cause,
     });
     setError(`Kunne ikke laste PDF-filen: ${error.message}`);
     setIsLoading(false);
@@ -193,9 +197,9 @@ export function PDFViewer({
                     className="shadow-lg"
                     file={pdfPath}
                     onLoadError={onDocumentLoadError}
+                    onLoadProgress={onDocumentLoadProgress}
                     onLoadStart={onDocumentLoadStart}
                     onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadProgress={onDocumentLoadProgress}
                     options={{
                       cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjs.version}/cmaps/`,
                       cMapPacked: true,
@@ -203,22 +207,24 @@ export function PDFViewer({
                   >
                     <Page
                       className="mx-auto"
-                      pageNumber={currentPage}
-                      width={Math.min(window.innerWidth * 0.8, 800)}
+                      loading={
+                        <div className="flex h-96 items-center justify-center">
+                          <div className="text-center">
+                            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2" />
+                            <p className="text-muted-foreground">
+                              Laster side {currentPage}...
+                            </p>
+                          </div>
+                        </div>
+                      }
                       onRenderError={(error) => {
                         console.error('Page render error:', error);
                       }}
                       onRenderSuccess={() => {
                         console.log('Page rendered successfully:', currentPage);
                       }}
-                      loading={
-                        <div className="flex h-96 items-center justify-center">
-                          <div className="text-center">
-                            <div className="mx-auto mb-2 h-8 w-8 animate-spin rounded-full border-gray-900 border-b-2" />
-                            <p className="text-muted-foreground">Laster side {currentPage}...</p>
-                          </div>
-                        </div>
-                      }
+                      pageNumber={currentPage}
+                      width={Math.min(window.innerWidth * 0.8, 800)}
                     />
                   </Document>
                 </div>

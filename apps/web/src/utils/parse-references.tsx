@@ -1,7 +1,7 @@
 import type React from 'react';
 import { Fragment } from 'react';
-import { Reference } from '@/components/reference';
 import { Streamdown } from 'streamdown';
+import { Reference } from '@/components/reference';
 
 type ParseReferencesProps = {
   text: string;
@@ -35,9 +35,7 @@ export function parseReferences({
       const textBefore = text.slice(lastIndex, matchStart);
       if (textBefore) {
         parts.push(
-          <Streamdown key={`text-${keyCounter}`}>
-            {textBefore}
-          </Streamdown>
+          <Streamdown key={`text-${keyCounter}`}>{textBefore}</Streamdown>
         );
       }
     }
@@ -61,9 +59,7 @@ export function parseReferences({
     const remainingText = text.slice(lastIndex);
     if (remainingText) {
       parts.push(
-        <Streamdown key={`text-${keyCounter}`}>
-          {remainingText}
-        </Streamdown>
+        <Streamdown key={`text-${keyCounter}`}>{remainingText}</Streamdown>
       );
     }
   }

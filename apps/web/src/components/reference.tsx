@@ -26,10 +26,10 @@ export function Reference({
 
   return (
     <a
+      className="mx-0.5 inline text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800"
       href={pdfUrl}
-      target="_blank"
       rel="noopener noreferrer"
-      className="inline text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800 mx-0.5"
+      target="_blank"
       title={`Åpne ${party.name} partiprogram på side ${pageNumber}`}
     >
       {children}
