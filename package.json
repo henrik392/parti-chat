@@ -68,11 +68,11 @@
     "uuid": ">=11.1.1"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.2.2",
+    "@biomejs/biome": "2.5.7",
     "@types/uuid": "^10.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
-    "turbo": "^2.10.2",
+    "turbo": "^2.10.9",
     "ultracite": "5.2.5"
   },
   "lint-staged": {
